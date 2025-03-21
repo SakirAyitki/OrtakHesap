@@ -1,10 +1,11 @@
 import React from "react";
-import { View, Text } from "react-native";
+import { View, Text, Button } from "react-native";
 
-export default function LoginScreen() {
+export default function LoginScreen({}) {
   return (
-    <View>
+    <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
       <Text>Login Screen</Text>
+      <Button title="Go to Register" onPress={() => {}} />
     </View>
   );
 }
