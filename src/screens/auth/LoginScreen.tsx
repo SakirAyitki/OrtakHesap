@@ -7,17 +7,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   TextInput,
+  Image,
+  Dimensions,
+  ScrollView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../types/auth.types";
 import { useNavigation } from "@react-navigation/native";
+import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
+import { COLORS } from "../../utils/color";
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
   "Login"
 >;
+
+const { width, height } = Dimensions.get("window");
 
 export default function LoginScreen() {
   const { login, error } = useAuth();
@@ -50,124 +59,228 @@ export default function LoginScreen() {
     }
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardView}
-      >
-        <View style={styles.form}>
-          <Text style={styles.title}>Hoş Geldiniz</Text>
-          <Text style={styles.subtitle}>Hesabınıza giriş yapın</Text>
-
-          <TextInput
-            style={styles.input}
-            value={email}
-            onChangeText={setEmail}
-            placeholder="E-posta"
-            keyboardType="email-address"
-            autoCapitalize="none"
-          />
-
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Şifre"
-            secureTextEntry={!showPassword}
-          />
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate("ForgotPassword")}
-            style={styles.forgotPassword}
-          >
-            <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
-          </TouchableOpacity>
-
-          {(validationError || error) && (
-            <Text style={styles.errorText}>{validationError || error}</Text>
-          )}
-
-          <TouchableOpacity
-            style={[styles.loginButton, isLoading && styles.disabledButton]}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            <Text style={styles.buttonText}>
-              {isLoading ? "Giriş Yapılıyor..." : "Giriş Yap"}
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Hesabınız yok mu?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.registerText}>Kayıt Ol</Text>
-            </TouchableOpacity>
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <SafeAreaView style={styles.container}>
+        {/* Background Wave */}
+        <View style={styles.backgroundWave} />
+        
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={styles.logoContainer}>
+            <Ionicons name="flame" size={24} color="black" />
           </View>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardView}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            keyboardShouldPersistTaps="always"
+            scrollEventThrottle={16}
+          >
+            <View style={styles.form}>
+              <Text style={styles.title}>Giriş Yap</Text>
+
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons name="email-outline" size={20} color={COLORS.PRIMARY} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="E-Posta"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.PRIMARY} />
+                </View>
+                <TextInput
+                  style={styles.input}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Şifre"
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeIcon}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#888" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password */}
+              <View style={styles.optionsRow}>
+                <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
+                </TouchableOpacity>
+              </View>
+
+              {(validationError || error) && (
+                <Text style={styles.errorText}>{validationError || error}</Text>
+              )}
+
+              {/* Login Button */}
+              <TouchableOpacity
+                style={[styles.loginButton, isLoading && styles.disabledButton]}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Giriş Yap</Text>
+              </TouchableOpacity>
+
+              {/* Sign Up Link */}
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Hesabın yok mu? </Text>
+                <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                  <Text style={styles.signUpText}>Hesap Oluştur</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  backgroundWave: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.35,
+    backgroundColor: COLORS.TERTIARY,
+    borderBottomLeftRadius: width * 0.5,
+    borderBottomRightRadius: width * 0.1,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    zIndex: 1,
+  },
+  logoContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuButton: {
+    padding: 8,
   },
   keyboardView: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 24,
+  },
   form: {
     padding: 24,
+    marginTop: height * 0.08,
   },
   title: {
-    fontSize: 24,
+    fontSize: 30,
     fontWeight: "bold",
-    color: "#333",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
+    color: COLORS.TEXT_DARK,
     marginBottom: 32,
-    textAlign: "center",
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+    marginBottom: 24,
+    position: 'relative',
+  },
+  iconContainer: {
+    paddingRight: 10,
   },
   input: {
-    backgroundColor: "#F5F5F5",
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
+    flex: 1,
+    paddingVertical: 12,
     fontSize: 16,
+    color: COLORS.TEXT_DARK,
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  optionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: COLORS.PRIMARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  checked: {
+    width: 10,
+    height: 10,
+    backgroundColor: COLORS.PRIMARY,
+  },
+  rememberMeText: {
+    color: COLORS.TEXT_GRAY,
+    fontSize: 14,
   },
   errorText: {
-    color: "#FF3B30",
+    color: COLORS.NEGATIVE,
     fontSize: 14,
     textAlign: "center",
     marginBottom: 16,
   },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 24,
-  },
   forgotPasswordText: {
-    color: "#007AFF",
+    color: COLORS.TEXT_GRAY,
     fontSize: 14,
   },
   loginButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: COLORS.PRIMARY,
     padding: 16,
     borderRadius: 8,
     alignItems: "center",
+    marginBottom: 24,
   },
   disabledButton: {
     opacity: 0.6,
   },
   buttonText: {
-    color: "#fff",
+    color: COLORS.TEXT_DARK,
     fontSize: 16,
     fontWeight: "bold",
   },
@@ -175,14 +288,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 24,
   },
   footerText: {
-    color: "#666",
-    marginRight: 4,
+    color: COLORS.TEXT_GRAY,
   },
-  registerText: {
-    color: "#007AFF",
+  signUpText: {
+    color: COLORS.PRIMARY,
     fontWeight: "bold",
   },
 });

@@ -8,6 +8,7 @@ import {
   TextInputProps 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { COLORS } from '../../utils/color';
 
 interface InputProps extends TextInputProps {
   error?: string;
@@ -35,7 +36,7 @@ export const Input: React.FC<InputProps> = ({
           <Ionicons 
             name={leftIcon as any} 
             size={20} 
-            color="#666" 
+            color={COLORS.PRIMARY}
             style={styles.leftIcon}
           />
         )}
@@ -51,7 +52,7 @@ export const Input: React.FC<InputProps> = ({
             <Ionicons 
               name={rightIcon as any} 
               size={20} 
-              color="#666" 
+              color="#888" 
               style={styles.rightIcon}
             />
           </TouchableOpacity>
@@ -67,34 +68,32 @@ export const Input: React.FC<InputProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
+    paddingVertical: 8,
   },
   inputError: {
-    borderColor: '#FF3B30',
+    borderBottomColor: COLORS.NEGATIVE,
   },
   input: {
     flex: 1,
-    height: 48,
+    height: 40,
     fontSize: 16,
-    color: '#333',
+    color: COLORS.TEXT_DARK,
   },
   leftIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   rightIcon: {
     marginLeft: 8,
   },
   errorText: {
-    color: '#FF3B30',
+    color: COLORS.NEGATIVE,
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
