@@ -17,13 +17,12 @@ export type AuthStackParamList = {
     };
 };
 
-// Authentication durumunu yöneten state tipi
-export type AuthState = {
-    isLoading: boolean;
+// Auth durumunu yöneten state tipi
+export interface AuthState {
     isAuthenticated: boolean;
     user: User | null;
     error: string | null;
-};
+}
 
 // Giriş yapmak için gerekli kullanıcı bilgileri
 export type LoginCredentials = {
@@ -44,4 +43,24 @@ export type RegisterData = {
     };
 };
 
+// Auth action tipleri
+export type AuthAction =
+  | { type: 'SET_USER'; payload: User | null }
+  | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'LOGOUT' };
 
+// Auth hata tipleri
+export type AuthError = {
+  code: string;
+  message: string;
+};
+
+// Context için tip tanımlaması
+export interface AuthContextType extends AuthState {
+  login: (credentials: LoginCredentials) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  verifyEmail: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
+}
