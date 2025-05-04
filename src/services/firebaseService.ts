@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import {
-  getAuth,
+import { 
+  getAuth, 
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -115,17 +115,17 @@ class FirebaseService {
   // Kayıt işlemi
   register: (data: RegisterData) => Promise<{ user: User; token: string }> = async (data) => {
     try {
-      const { email, password, fullName } = data;
+    const { email, password, fullName } = data;
       console.log('Starting registration with data:', { email, fullName });
 
       // Auth'da kullanıcı oluştur
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       console.log('User created in Authentication:', userCredential.user.uid);
-      
+    
       // Kullanıcı profilini güncelle
       console.log('Updating user profile with displayName:', fullName);
-      await updateProfile(userCredential.user, {
-        displayName: fullName,
+    await updateProfile(userCredential.user, {
+      displayName: fullName,
         photoURL: data.photoURL || null,
       });
 
@@ -160,10 +160,10 @@ class FirebaseService {
       const currentUser = await this.getCurrentUser(userCredential.user);
       console.log('Current user data:', currentUser);
 
-      return {
+    return {
         user: currentUser,
-        token: await userCredential.user.getIdToken(),
-      };
+      token: await userCredential.user.getIdToken(),
+    };
     } catch (error) {
       console.error('Error during registration:', error);
       throw error;
@@ -195,9 +195,9 @@ class FirebaseService {
 
       // Firebase Auth profilini güncelle
       await updateProfile(user, {
-        displayName: userData.fullName,
-        photoURL: userData.photoURL,
-      });
+      displayName: userData.fullName,
+      photoURL: userData.photoURL,
+    });
 
       // Firestore'daki kullanıcı dokümanını güncelle
       const userRef = doc(db, 'users', user.uid);
@@ -210,7 +210,7 @@ class FirebaseService {
       const userDoc = await getDoc(userRef);
       const updatedUserData = userDoc.data();
 
-      return {
+    return {
         id: user.uid,
         email: user.email!,
         fullName: user.displayName || '',

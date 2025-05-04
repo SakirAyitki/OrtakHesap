@@ -30,7 +30,7 @@ export default function GroupNavigator() {
       <Stack.Screen
         name="GroupList"
         component={GroupListScreen}
-        options={{ title: 'Gruplar' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="GroupDetail"

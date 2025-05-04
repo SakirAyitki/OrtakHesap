@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  FlatList, 
-  ActivityIndicator 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +17,11 @@ import { formatDate } from '../../utils/formatters';
 import { Group } from '../../types/group.types';
 import { Expense } from '../../types/expense.types';
 import { useAuth } from '../../hooks/useAuth';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 16;
+const CARD_WIDTH = width - (CARD_MARGIN * 2);
 
 type BalanceSummary = {
   totalReceivable: number; // Alacak
@@ -143,30 +149,78 @@ export default function BalanceScreen() {
     }
   };
 
-  const renderUserBalanceItem = ({ item }: { item: UserBalance }) => (
-    <View style={styles.balanceItem}>
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>{item.fullName}</Text>
-        <Text style={styles.userEmail}>{item.email}</Text>
-      </View>
-      <Text style={[
-        styles.balanceAmount,
-        { color: item.balance >= 0 ? COLORS.POSITIVE : COLORS.NEGATIVE }
-      ]}>
-        {formatCurrency(item.balance, balanceSummary.currency)}
-      </Text>
+  const renderSummaryCard = () => (
+    <View style={styles.summaryCard}>
+      <LinearGradient
+        colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle}>Genel Bakiye Durumu</Text>
+        </View>
+
+        <View style={styles.balanceInfo}>
+          <View style={styles.balanceItem}>
+            <Text style={styles.balanceLabel}>Toplam Alacak</Text>
+            <Text style={[styles.balanceValue, styles.positiveAmount]}>
+              {formatCurrency(balanceSummary.totalReceivable, balanceSummary.currency)}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.balanceItem}>
+            <Text style={styles.balanceLabel}>Toplam Borç</Text>
+            <Text style={[styles.balanceValue, styles.negativeAmount]}>
+              {formatCurrency(balanceSummary.totalPayable, balanceSummary.currency)}
+            </Text>
+          </View>
+          <View style={styles.divider} />
+          <View style={styles.balanceItem}>
+            <Text style={styles.balanceLabel}>Net Durum</Text>
+            <Text style={[
+              styles.balanceValue,
+              balanceSummary.netBalance >= 0 ? styles.positiveAmount : styles.negativeAmount
+            ]}>
+              {formatCurrency(balanceSummary.netBalance, balanceSummary.currency)}
+            </Text>
+          </View>
+        </View>
+      </LinearGradient>
     </View>
   );
 
-  const renderExpenseItem = ({ item }: { item: Expense }) => (
-    <View style={styles.expenseItem}>
-      <View style={styles.expenseInfo}>
-        <Text style={styles.expenseTitle}>{item.title}</Text>
-        <Text style={styles.expenseDate}>{formatDate(item.createdAt)}</Text>
-      </View>
-      <Text style={styles.expenseAmount}>
-        {formatCurrency(item.amount, item.currency)}
-      </Text>
+  const renderUserBalanceItem = ({ item }: { item: UserBalance }) => (
+    <View style={styles.userCard}>
+      <LinearGradient
+        colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.userInfo}>
+          <View style={styles.userAvatar}>
+            <Text style={styles.avatarText}>
+              {item.fullName.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>{item.fullName}</Text>
+            <Text style={styles.userEmail}>{item.email}</Text>
+          </View>
+        </View>
+        <View style={styles.balanceContainer}>
+          <Text style={[
+            styles.balanceAmount,
+            item.balance >= 0 ? styles.positiveAmount : styles.negativeAmount
+          ]}>
+            {formatCurrency(item.balance, balanceSummary.currency)}
+          </Text>
+          <Text style={styles.balanceStatus}>
+            {item.balance >= 0 ? 'Alacak' : 'Borç'}
+          </Text>
+        </View>
+      </LinearGradient>
     </View>
   );
 
@@ -182,76 +236,41 @@ export default function BalanceScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Bakiye</Text>
+        <TouchableOpacity
+          style={styles.refreshButton}
+          onPress={handleRefresh}
+          disabled={isRefreshing}
+        >
+          {isRefreshing ? (
+            <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+          ) : (
+            <Ionicons name="refresh" size={24} color={COLORS.TEXT_LIGHT} />
+          )}
+        </TouchableOpacity>
       </View>
 
       <FlatList
         data={userBalances}
         renderItem={renderUserBalanceItem}
         keyExtractor={item => item.userId}
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         onRefresh={handleRefresh}
         refreshing={isRefreshing}
-        ListHeaderComponent={
-          <>
-            <View style={styles.summaryCard}>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Toplam Alacak</Text>
-                <Text style={[styles.summaryValue, styles.positiveAmount]}>
-                  {formatCurrency(balanceSummary.totalReceivable, balanceSummary.currency)}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Toplam Borç</Text>
-                <Text style={[styles.summaryValue, styles.negativeAmount]}>
-                  {formatCurrency(balanceSummary.totalPayable, balanceSummary.currency)}
-                </Text>
-              </View>
-              <View style={styles.divider} />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryLabel}>Net Durum</Text>
-                <Text style={[
-                  styles.summaryValue,
-                  balanceSummary.netBalance >= 0 ? styles.positiveAmount : styles.negativeAmount
-                ]}>
-                  {formatCurrency(balanceSummary.netBalance, balanceSummary.currency)}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Kişi Bazlı Özet</Text>
-            </View>
-          </>
-        }
+        ListHeaderComponent={renderSummaryCard}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Henüz bir işlem yok</Text>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="wallet-outline" size={80} color={COLORS.PRIMARY} />
+            </View>
+            <Text style={styles.emptyText}>
+              Henüz bir işlem yok
+            </Text>
             <Text style={styles.emptySubText}>
-              Harcama ekleyerek bakiyenizi görüntüleyebilirsiniz
+              Gruplarınızdaki harcamalar burada listelenecek
             </Text>
           </View>
         }
-        ListFooterComponent={
-          recentExpenses.length > 0 ? (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Son Hareketler</Text>
-              {recentExpenses.map(expense => (
-                <View key={expense.id} style={styles.expenseItem}>
-                  <View style={styles.expenseInfo}>
-                    <Text style={styles.expenseTitle}>{expense.title}</Text>
-                    <Text style={styles.expenseDate}>
-                      {formatDate(expense.createdAt)}
-                    </Text>
-                  </View>
-                  <Text style={styles.expenseAmount}>
-                    {formatCurrency(expense.amount, expense.currency)}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          ) : null
-        }
-        contentContainerStyle={styles.listContent}
       />
     </SafeAreaView>
   );
@@ -272,45 +291,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
+  },
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   listContent: {
-    flexGrow: 1,
+    padding: CARD_MARGIN,
+    paddingTop: 16,
   },
   summaryCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 12,
+    width: CARD_WIDTH,
+    marginBottom: 24,
+    borderRadius: 16,
+    overflow: 'hidden',
     shadowColor: COLORS.SHADOW,
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  summaryItem: {
+  cardGradient: {
+    padding: 20,
+  },
+  cardHeader: {
+    marginBottom: 16,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+  },
+  balanceInfo: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 16,
+  },
+  balanceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 8,
   },
-  summaryLabel: {
-    fontSize: 16,
-    color: COLORS.TEXT_GRAY,
+  balanceLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
-  summaryValue: {
+  balanceValue: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: 'bold',
   },
   positiveAmount: {
     color: COLORS.POSITIVE,
@@ -320,83 +374,100 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.BORDER,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     marginVertical: 8,
   },
-  section: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
-    marginBottom: 16,
-  },
-  balanceItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+  userCard: {
+    width: CARD_WIDTH,
+    marginBottom: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+  },
+  userDetails: {
     flex: 1,
   },
   userName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.TEXT_DARK,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
     marginBottom: 4,
   },
   userEmail: {
-    fontSize: 14,
-    color: COLORS.TEXT_GRAY,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  balanceContainer: {
+    alignItems: 'flex-end',
   },
   balanceAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  expenseItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  expenseInfo: {
-    flex: 1,
-  },
-  expenseTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.TEXT_DARK,
+    fontSize: 18,
+    fontWeight: 'bold',
     marginBottom: 4,
   },
-  expenseDate: {
-    fontSize: 14,
-    color: COLORS.TEXT_GRAY,
-  },
-  expenseAmount: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
+  balanceStatus: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   emptyContainer: {
-    padding: 32,
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 32,
+    marginTop: 32,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.TERTIARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   emptyText: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
     color: COLORS.TEXT_DARK,
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubText: {
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.TEXT_GRAY,
     textAlign: 'center',
   },

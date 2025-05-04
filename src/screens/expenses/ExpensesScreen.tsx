@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,6 +22,11 @@ import { Expense } from '../../types/expense.types';
 import { formatCurrency } from '../../utils/currency';
 import { formatDate } from '../../utils/formatters';
 import { Group } from '../../types/group.types';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 16;
+const CARD_WIDTH = width - (CARD_MARGIN * 2);
 
 type ExpensesScreenNavigationProp = CompositeNavigationProp<
   NativeStackNavigationProp<ExpensesStackParamList, 'ExpensesList'>,
@@ -111,26 +117,49 @@ export default function ExpensesScreen() {
 
   const renderExpenseItem = ({ item }: { item: Expense }) => (
     <TouchableOpacity
-      style={styles.expenseItem}
+      style={styles.expenseCard}
       onPress={() => handleExpensePress(item.id)}
+      activeOpacity={0.8}
     >
-      <View style={styles.expenseInfo}>
-        <Text style={styles.expenseTitle}>{item.title}</Text>
-        <Text style={styles.expenseDate}>
-          {formatDate(item.createdAt)}
-        </Text>
-      </View>
-      <View style={styles.expenseAmount}>
-        <Text style={styles.amountText}>
-          {formatCurrency(item.amount, item.currency)}
-        </Text>
-        <Text style={[
-          styles.statusText,
-          item.status === 'settled' ? styles.settledStatus : styles.pendingStatus
-        ]}>
-          {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
-        </Text>
-      </View>
+      <LinearGradient
+        colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.cardHeader}>
+          <View style={styles.expenseInfo}>
+            <Text style={styles.expenseTitle}>{item.title}</Text>
+            <Text style={styles.expenseDate}>
+              {formatDate(item.createdAt)}
+            </Text>
+          </View>
+          <View style={styles.expenseAmount}>
+            <Text style={styles.amountText}>
+              {formatCurrency(item.amount, item.currency)}
+            </Text>
+            <View style={[
+              styles.statusBadge,
+              item.status === 'settled' ? styles.settledBadge : styles.pendingBadge
+            ]}>
+              <Text style={styles.statusText}>
+                {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.cardFooter}>
+          <View style={styles.footerInfo}>
+            <Text style={styles.footerLabel}>Ödeyen</Text>
+            <Text style={styles.footerValue}>{item.paidByUser?.fullName || 'Bilinmiyor'}</Text>
+          </View>
+          <View style={styles.footerInfo}>
+            <Text style={styles.footerLabel}>Katılımcılar</Text>
+            <Text style={styles.footerValue}>{item.participants.length} kişi</Text>
+          </View>
+        </View>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
@@ -160,6 +189,9 @@ export default function ExpensesScreen() {
           <Text style={styles.title}>Harcamalar</Text>
         </View>
         <View style={styles.centerContainer}>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="wallet-outline" size={80} color={COLORS.PRIMARY} />
+          </View>
           <Text style={styles.emptyText}>Henüz bir grubunuz yok</Text>
           <Text style={styles.emptySubText}>
             Harcama eklemek için önce bir grup oluşturun
@@ -186,16 +218,16 @@ export default function ExpensesScreen() {
             disabled={isRefreshing}
           >
             {isRefreshing ? (
-              <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
             ) : (
-              <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
+              <Ionicons name="refresh" size={24} color={COLORS.TEXT_LIGHT} />
             )}
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.addButton}
             onPress={handleCreateExpense}
           >
-            <Ionicons name="add" size={24} color={COLORS.PRIMARY} />
+            <Ionicons name="add" size={24} color={COLORS.TEXT_LIGHT} />
           </TouchableOpacity>
         </View>
       </View>
@@ -231,16 +263,26 @@ export default function ExpensesScreen() {
         renderItem={renderExpenseItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
         onRefresh={handleRefresh}
         refreshing={isRefreshing}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconContainer}>
+              <Ionicons name="receipt-outline" size={80} color={COLORS.PRIMARY} />
+            </View>
             <Text style={styles.emptyText}>
               Henüz bir harcama yok
             </Text>
             <Text style={styles.emptySubText}>
               Yeni bir harcama ekleyerek başlayın
             </Text>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={handleCreateExpense}
+            >
+              <Text style={styles.buttonText}>Harcama Ekle</Text>
+            </TouchableOpacity>
           </View>
         }
       />
@@ -264,152 +306,237 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
   },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.TERTIARY,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 12,
   },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.TERTIARY,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   groupSelector: {
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    paddingVertical: 16,
+    backgroundColor: COLORS.BACKGROUND,
   },
   groupList: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
   },
   groupChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     borderRadius: 20,
     backgroundColor: COLORS.TERTIARY,
-    marginRight: 8,
+    marginRight: 12,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   selectedGroupChip: {
     backgroundColor: COLORS.PRIMARY,
   },
   groupChipText: {
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
     color: COLORS.TEXT_DARK,
   },
   selectedGroupChipText: {
     color: COLORS.TEXT_LIGHT,
   },
   listContent: {
-    padding: 16,
-    flexGrow: 1,
+    padding: CARD_MARGIN,
+    paddingTop: 8,
   },
-  expenseItem: {
+  expenseCard: {
+    width: CARD_WIDTH,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardGradient: {
+    padding: 20,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 20,
   },
   expenseInfo: {
     flex: 1,
     marginRight: 12,
   },
   expenseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
     marginBottom: 4,
   },
   expenseDate: {
     fontSize: 14,
-    color: COLORS.TEXT_GRAY,
+    color: 'rgba(255, 255, 255, 0.8)',
   },
   expenseAmount: {
     alignItems: 'flex-end',
   },
   amountText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  settledBadge: {
+    backgroundColor: 'rgba(52, 199, 89, 0.2)',
+  },
+  pendingBadge: {
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
   },
-  settledStatus: {
-    color: COLORS.POSITIVE,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    paddingTop: 16,
   },
-  pendingStatus: {
-    color: COLORS.NEGATIVE,
+  footerInfo: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  footerLabel: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 4,
+  },
+  footerValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    paddingHorizontal: 32,
+    marginTop: 100,
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: COLORS.TERTIARY,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
   emptyText: {
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 20,
+    fontWeight: '600',
     color: COLORS.TEXT_DARK,
     marginBottom: 8,
     textAlign: 'center',
   },
   emptySubText: {
-    fontSize: 14,
+    fontSize: 16,
     color: COLORS.TEXT_GRAY,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
   errorText: {
-    fontSize: 16,
     color: COLORS.NEGATIVE,
+    fontSize: 16,
     textAlign: 'center',
     marginBottom: 16,
   },
   retryButton: {
     backgroundColor: COLORS.PRIMARY,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   retryButtonText: {
     color: COLORS.TEXT_LIGHT,
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   createButton: {
     backgroundColor: COLORS.PRIMARY,
     paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: COLORS.PRIMARY,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonText: {
-    color: COLORS.TEXT_LIGHT,
     fontSize: 16,
     fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
   },
 }); 

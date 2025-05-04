@@ -9,12 +9,18 @@ import {
   TextInput,
   Alert,
   Switch,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/color';
 import { useAuth } from '../../hooks/useAuth';
-import firebaseService from '../../services/firebaseService';
+import { firebaseService } from '../../services/firebaseService';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { width } = Dimensions.get('window');
+const CARD_MARGIN = 16;
+const CARD_WIDTH = width - (CARD_MARGIN * 2);
 
 export default function ProfileScreen() {
   const { user, logout, updateUser } = useAuth();
@@ -94,7 +100,6 @@ export default function ProfileScreen() {
       setNotificationSettings(newSettings);
       await firebaseService.updateNotificationSettings(user.id, newSettings);
     } catch (error) {
-      // Hata durumunda eski ayarlara geri dön
       setNotificationSettings(prevSettings => ({
         ...prevSettings,
         [setting]: !prevSettings[setting],
@@ -113,167 +118,194 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Profil</Text>
+      </View>
+
       <ScrollView style={styles.content}>
-        {/* Profil Başlığı */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Profil</Text>
-        </View>
-
         {/* Profil Bilgileri */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profil Bilgileri</Text>
-          
-          <View style={styles.profileSection}>
-            <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {user?.fullName?.charAt(0).toUpperCase() || '?'}
-              </Text>
-            </View>
-            
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Ad Soyad</Text>
-              <TextInput
-                style={[styles.input, !isEditing && styles.disabledInput]}
-                value={fullName}
-                onChangeText={setFullName}
-                editable={isEditing}
-                placeholder="Ad Soyad"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>E-posta</Text>
-              <TextInput
-                style={[styles.input, styles.disabledInput]}
-                value={email}
-                editable={false}
-                placeholder="E-posta"
-              />
-            </View>
-
-            {!isEditing ? (
-              <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => setIsEditing(true)}
-              >
-                <Text style={styles.editButtonText}>Profili Düzenle</Text>
-              </TouchableOpacity>
-            ) : (
-              <View style={styles.editActions}>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelButton]}
-                  onPress={() => {
-                    setIsEditing(false);
-                    setFullName(user?.fullName || '');
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>İptal</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.saveButton]}
-                  onPress={handleUpdateProfile}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
-                  ) : (
-                    <Text style={styles.saveButtonText}>Kaydet</Text>
-                  )}
-                </TouchableOpacity>
+        <View style={styles.card}>
+          <LinearGradient
+            colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
+            <View style={styles.profileSection}>
+              <View style={styles.avatarContainer}>
+                <Text style={styles.avatarText}>
+                  {user?.fullName?.charAt(0).toUpperCase() || '?'}
+                </Text>
               </View>
-            )}
-          </View>
+              
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Ad Soyad</Text>
+                <TextInput
+                  style={[styles.input, !isEditing && styles.disabledInput]}
+                  value={fullName}
+                  onChangeText={setFullName}
+                  editable={isEditing}
+                  placeholder="Ad Soyad"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+              </View>
+
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>E-posta</Text>
+                <TextInput
+                  style={[styles.input, styles.disabledInput]}
+                  value={email}
+                  editable={false}
+                  placeholder="E-posta"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+              </View>
+
+              {!isEditing ? (
+                <TouchableOpacity
+                  style={styles.editButton}
+                  onPress={() => setIsEditing(true)}
+                >
+                  <Text style={styles.editButtonText}>Profili Düzenle</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.cancelButton]}
+                    onPress={() => {
+                      setIsEditing(false);
+                      setFullName(user?.fullName || '');
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>İptal</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.saveButton]}
+                    onPress={handleUpdateProfile}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+                    ) : (
+                      <Text style={styles.saveButtonText}>Kaydet</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
         </View>
 
         {/* Şifre Değiştirme */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Şifre Değiştirme</Text>
-          
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Mevcut Şifre</Text>
-            <TextInput
-              style={styles.input}
-              value={currentPassword}
-              onChangeText={setCurrentPassword}
-              secureTextEntry
-              placeholder="Mevcut şifrenizi girin"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Yeni Şifre</Text>
-            <TextInput
-              style={styles.input}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              secureTextEntry
-              placeholder="Yeni şifrenizi girin"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
-            <TextInput
-              style={styles.input}
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              placeholder="Yeni şifrenizi tekrar girin"
-            />
-          </View>
-
-          <TouchableOpacity
-            style={[styles.changePasswordButton, (!currentPassword || !newPassword || !confirmPassword) && styles.disabledButton]}
-            onPress={handleChangePassword}
-            disabled={!currentPassword || !newPassword || !confirmPassword || isLoading}
+        <View style={styles.card}>
+          <LinearGradient
+            colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
           >
-            {isLoading ? (
-              <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
-            ) : (
-              <Text style={styles.buttonText}>Şifreyi Değiştir</Text>
-            )}
-          </TouchableOpacity>
+            <Text style={styles.cardTitle}>Şifre Değiştirme</Text>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Mevcut Şifre</Text>
+              <TextInput
+                style={styles.input}
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+                secureTextEntry
+                placeholder="Mevcut şifrenizi girin"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Yeni Şifre</Text>
+              <TextInput
+                style={styles.input}
+                value={newPassword}
+                onChangeText={setNewPassword}
+                secureTextEntry
+                placeholder="Yeni şifrenizi girin"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
+              <TextInput
+                style={styles.input}
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+                secureTextEntry
+                placeholder="Yeni şifrenizi tekrar girin"
+                placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.changePasswordButton, (!currentPassword || !newPassword || !confirmPassword) && styles.disabledButton]}
+              onPress={handleChangePassword}
+              disabled={!currentPassword || !newPassword || !confirmPassword || isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+              ) : (
+                <Text style={styles.buttonText}>Şifreyi Değiştir</Text>
+              )}
+            </TouchableOpacity>
+          </LinearGradient>
         </View>
 
         {/* Bildirim Ayarları */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Bildirim Tercihleri</Text>
-          
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>E-posta Bildirimleri</Text>
-            <Switch
-              value={notificationSettings.emailNotifications}
-              onValueChange={() => handleToggleNotification('emailNotifications')}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-            />
-          </View>
+        <View style={styles.card}>
+          <LinearGradient
+            colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.cardGradient}
+          >
+            <Text style={styles.cardTitle}>Bildirim Tercihleri</Text>
+            
+            <View style={styles.settingItem}>
+              <Text style={styles.settingText}>E-posta Bildirimleri</Text>
+              <Switch
+                value={notificationSettings.emailNotifications}
+                onValueChange={() => handleToggleNotification('emailNotifications')}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
+                thumbColor={notificationSettings.emailNotifications ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
+              />
+            </View>
 
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>Push Bildirimleri</Text>
-            <Switch
-              value={notificationSettings.pushNotifications}
-              onValueChange={() => handleToggleNotification('pushNotifications')}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-            />
-          </View>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingText}>Push Bildirimleri</Text>
+              <Switch
+                value={notificationSettings.pushNotifications}
+                onValueChange={() => handleToggleNotification('pushNotifications')}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
+                thumbColor={notificationSettings.pushNotifications ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
+              />
+            </View>
 
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>Bakiye Uyarıları</Text>
-            <Switch
-              value={notificationSettings.balanceAlerts}
-              onValueChange={() => handleToggleNotification('balanceAlerts')}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-            />
-          </View>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingText}>Bakiye Uyarıları</Text>
+              <Switch
+                value={notificationSettings.balanceAlerts}
+                onValueChange={() => handleToggleNotification('balanceAlerts')}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
+                thumbColor={notificationSettings.balanceAlerts ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
+              />
+            </View>
 
-          <View style={styles.settingItem}>
-            <Text style={styles.settingText}>Grup Davetleri</Text>
-            <Switch
-              value={notificationSettings.groupInvites}
-              onValueChange={() => handleToggleNotification('groupInvites')}
-              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
-            />
-          </View>
+            <View style={styles.settingItem}>
+              <Text style={styles.settingText}>Grup Davetleri</Text>
+              <Switch
+                value={notificationSettings.groupInvites}
+                onValueChange={() => handleToggleNotification('groupInvites')}
+                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
+                thumbColor={notificationSettings.groupInvites ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
+              />
+            </View>
+          </LinearGradient>
         </View>
 
         {/* Çıkış Yap */}
@@ -293,31 +325,54 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
   },
-  content: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: COLORS.PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
   },
-  section: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+  content: {
+    flex: 1,
+    padding: CARD_MARGIN,
   },
-  sectionTitle: {
+  card: {
+    width: CARD_WIDTH,
+    marginBottom: 16,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  cardGradient: {
+    padding: 20,
+  },
+  cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
     marginBottom: 16,
   },
   profileSection: {
@@ -327,7 +382,7 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.TERTIARY,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -335,7 +390,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: COLORS.PRIMARY,
+    color: COLORS.TEXT_LIGHT,
   },
   inputContainer: {
     width: '100%',
@@ -343,23 +398,23 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 14,
-    color: COLORS.TEXT_GRAY,
+    color: 'rgba(255, 255, 255, 0.8)',
     marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.BORDER,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   disabledInput: {
-    backgroundColor: COLORS.BACKGROUND,
-    color: COLORS.TEXT_GRAY,
+    opacity: 0.7,
   },
   editButton: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -383,17 +438,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: COLORS.BACKGROUND,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: COLORS.BORDER,
   },
   saveButton: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.POSITIVE,
     marginLeft: 8,
   },
   cancelButtonText: {
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
     fontSize: 16,
     fontWeight: '600',
   },
@@ -403,7 +456,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   changePasswordButton: {
-    backgroundColor: COLORS.PRIMARY,
+    backgroundColor: COLORS.POSITIVE,
     padding: 16,
     borderRadius: 8,
     alignItems: 'center',
@@ -425,7 +478,7 @@ const styles = StyleSheet.create({
   },
   settingText: {
     fontSize: 16,
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
   },
   logoutButton: {
     margin: 16,
