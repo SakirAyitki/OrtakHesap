@@ -3,29 +3,23 @@ import { Expense } from './expense.types';
 
 export type GroupStackParamList = {
   GroupList: undefined;
-  GroupDetail: { groupId: string };
+  GroupDetails: { groupId: string };
   CreateGroup: undefined;
-  GroupDetails: {
-    groupId: string;
-  };
-  EditGroup: {
-    group: Group;
-  };
-  AddMember: {
-    groupId: string;
-  };
-  GroupSettings: {
-    groupId: string;
-  };
-  CreateExpense: {
-    groupId: string;
-  };
-  ExpenseDetails: {
-    groupId: string;
-    expenseId: string;
-  };
-  EditExpense: {
-    groupId: string;
-    expense: Expense;
-  };
+  AddMember: { groupId: string };
+  CreateExpense: { groupId: string };
+  ExpenseDetails: { expenseId: string; groupId: string };
+  EditExpense: { expenseId: string; groupId: string };
+  EditGroup: { groupId: string };
+  GroupSettings: { groupId: string };
+};
+
+export type RootStackParamList = {
+  Auth: undefined;
+  Main: undefined;
+};
+
+export type MainTabParamList = {
+  Groups: undefined;
+  Balance: undefined;
+  Profile: undefined;
 }; 

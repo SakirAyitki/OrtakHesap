@@ -33,7 +33,7 @@ export default function GroupNavigator() {
         options={{ headerShown: false }}
       />
       <Stack.Screen
-        name="GroupDetail"
+        name="GroupDetails"
         component={GroupDetailScreen}
         options={{ title: 'Grup Detayı' }}
       />
