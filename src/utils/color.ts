@@ -1,15 +1,16 @@
 export const COLORS = {
-    PRIMARY: '#FFC107',      // Ana sarı renk (primary actions)
-    SECONDARY: '#FFD54F',    // Açık sarı (secondary actions)
-    TERTIARY: '#FFF8DC',     // Çok açık sarı (background accents)
+    PRIMARY: '#007AFF',      // Ana sarı renk (primary actions)
+    SECONDARY: '#5856D6',    // Açık sarı (secondary actions)
+    TERTIARY: '#E5E5EA',     // Çok açık sarı (background accents)
     BACKGROUND: '#FFFFFF',   // Beyaz arkaplan
     
     // Tamamlayıcı renkler
     TEXT_DARK: '#000000',    // Koyu metin
-    TEXT_GRAY: '#666666',    // Gri metin
+    TEXT_GRAY: '#8E8E93',    // Gri metin
     TEXT_LIGHT: '#FFFFFF',   // Açık metin
-    POSITIVE: '#4CAF50',     // Pozitif değerler (alacaklar)
+    POSITIVE: '#34C759',     // Pozitif değerler (alacaklar)
     NEGATIVE: '#FF3B30',     // Negatif değerler (borçlar)
-    BORDER: '#E0E0E0',       // Sınırlar/ayraçlar
-    SHADOW: 'rgba(255,193,7,0.2)' // Gölgeler için
+    NEGATIVE_LIGHT: '#FFE5E5',
+    BORDER: '#C6C6C8',       // Sınırlar/ayraçlar
+    SHADOW: '#000000'        // Gölgeler için
   };

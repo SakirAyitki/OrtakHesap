@@ -6,22 +6,24 @@ export type Group = {
     id: string;
     name: string;
     description?: string;
-    createdAt: Date | string;
-    updatedAt: Date | string;
-    createdBy: UserSummary;
+    currency: 'TRY' | 'USD' | 'EUR';
+    splitMethod: 'equal' | 'percentage' | 'amount';
+    createdAt: Date;
+    updatedAt: Date;
+    createdBy: string;
     image?: string;
     members: GroupMember[];
+    balance: number;
     settings: GroupSettings;
     status: GroupStatus;
 };
 
 // Grup üyelik detayları
 export type GroupMember = {
-    user: UserSummary;
-    role: GroupRole;
-    joinedAt: Date | string;
-    balance: number;
-    status: MembershipStatus;
+    id: string;
+    email: string;
+    fullName: string;
+    photoURL: string | null;
 };
 
 // Grup rolleri
@@ -44,8 +46,6 @@ export type MembershipStatus =
 
 // Grup ayarları
 export type GroupSettings = {
-    currency: 'TRY' | 'USD' | 'EUR';
-    splitMethod: 'equal' | 'percentage' | 'amount';
     autoApproveExpenses: boolean;
     allowMemberInvite: boolean;
 };

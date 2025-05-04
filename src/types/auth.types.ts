@@ -20,6 +20,7 @@ export type AuthStackParamList = {
 // Auth durumunu yöneten state tipi
 export interface AuthState {
     isAuthenticated: boolean;
+    isLoading: boolean;
     user: User | null;
     error: string | null;
 }
@@ -47,6 +48,7 @@ export type RegisterData = {
 export type AuthAction =
   | { type: 'SET_USER'; payload: User | null }
   | { type: 'SET_ERROR'; payload: string | null }
+  | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'LOGOUT' };
 
 // Auth hata tipleri
