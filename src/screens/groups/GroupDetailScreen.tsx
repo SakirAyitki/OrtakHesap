@@ -4,11 +4,10 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
+  FlatList,
   ActivityIndicator,
   Alert,
   Image,
-  FlatList
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +17,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GroupStackParamList } from '../../types/navigation.types';
 import { Group } from '../../types/group.types';
 import { firebaseService } from '../../services/firebaseService';
+import { Expense } from '../../types/expense.types';
+import { formatDate, formatCurrency } from '../../utils/formatters';
 
 type GroupDetailScreenNavigationProp = NativeStackNavigationProp<
   GroupStackParamList,
@@ -38,9 +39,12 @@ export default function GroupDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [isExpensesLoading, setIsExpensesLoading] = useState(true);
 
   useEffect(() => {
     fetchGroupDetails();
+    fetchExpenses();
   }, [groupId]);
 
   const fetchGroupDetails = async () => {
@@ -57,10 +61,22 @@ export default function GroupDetailScreen() {
     }
   };
 
+  const fetchExpenses = async () => {
+    try {
+      const fetchedExpenses = await firebaseService.getExpenses(groupId);
+      setExpenses(fetchedExpenses);
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+    } finally {
+      setIsExpensesLoading(false);
+    }
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await fetchGroupDetails();
+      await fetchExpenses();
     } finally {
       setIsRefreshing(false);
     }
@@ -76,14 +92,183 @@ export default function GroupDetailScreen() {
     navigation.navigate('AddMember', { groupId });
   };
 
-  const handleAddExpense = () => {
-    // TODO: Implement expense creation navigation
-    Alert.alert('Bilgi', 'Harcama ekleme yakında eklenecek');
+  const handleCreateExpense = () => {
+    navigation.navigate('CreateExpense', { groupId });
+  };
+
+  const handleExpensePress = (expenseId: string) => {
+    navigation.navigate('ExpenseDetails', { groupId, expenseId });
   };
 
   const handleSettingsPress = () => {
     navigation.navigate('GroupSettings', { groupId });
   };
+
+  const renderExpenseItem = ({ item }: { item: Expense }) => (
+    <TouchableOpacity
+      style={styles.expenseItem}
+      onPress={() => handleExpensePress(item.id)}
+    >
+      <View style={styles.expenseInfo}>
+        <Text style={styles.expenseTitle}>{item.title}</Text>
+        <Text style={styles.expenseDate}>
+          {formatDate(item.createdAt)}
+        </Text>
+      </View>
+      <View style={styles.expenseAmount}>
+        <Text style={styles.amountText}>
+          {formatCurrency(item.amount, item.currency)}
+        </Text>
+        <Text style={[
+          styles.statusText,
+          item.status === 'settled' ? styles.settledStatus : styles.pendingStatus
+        ]}>
+          {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderHeader = () => {
+    if (!group) return null;
+
+    return (
+      <>
+        <View style={styles.header}>
+          <View style={styles.headerContent}>
+            <Text style={styles.groupName}>{group.name}</Text>
+            {group.description && (
+              <Text style={styles.description}>{group.description}</Text>
+            )}
+          </View>
+          <View style={styles.headerButtons}>
+            <TouchableOpacity 
+              style={styles.refreshButton}
+              onPress={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+              ) : (
+                <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.editButton}
+              onPress={handleEditPress}
+            >
+              <Ionicons name="create-outline" size={24} color={COLORS.PRIMARY} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Para Birimi</Text>
+              <Text style={styles.infoValue}>
+                {getCurrencySymbol(group.currency)}
+              </Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Bölüşüm</Text>
+              <Text style={styles.infoValue}>
+                {getSplitMethodText(group.splitMethod)}
+              </Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Text style={styles.infoLabel}>Toplam Bakiye</Text>
+              <Text style={[
+                styles.infoValue,
+                { color: group.balance >= 0 ? COLORS.POSITIVE : COLORS.NEGATIVE }
+              ]}>
+                {getCurrencySymbol(group.currency)}{Math.abs(group.balance)}
+              </Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.quickActions}>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleCreateExpense}
+          >
+            <Ionicons name="add-circle-outline" size={24} color={COLORS.PRIMARY} />
+            <Text style={styles.actionButtonText}>Harcama Ekle</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.actionButton}
+            onPress={handleAddMember}
+          >
+            <Ionicons name="person-add-outline" size={24} color={COLORS.PRIMARY} />
+            <Text style={styles.actionButtonText}>Üye Ekle</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Üyeler</Text>
+            <Text style={styles.memberCount}>{group.members.length} üye</Text>
+          </View>
+          {group.members.length === 0 ? (
+            <Text style={styles.emptyText}>Henüz üye eklenmemiş</Text>
+          ) : (
+            <View style={styles.memberList}>
+              {group.members.map((member) => (
+                <View key={member.id} style={styles.memberItem}>
+                  <View style={styles.memberAvatar}>
+                    {member.photoURL ? (
+                      <Image 
+                        source={{ uri: member.photoURL }} 
+                        style={styles.avatarImage} 
+                      />
+                    ) : (
+                      <Text style={styles.avatarText}>
+                        {member.fullName?.charAt(0).toUpperCase() || '?'}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{member.fullName || 'İsimsiz Kullanıcı'}</Text>
+                    <Text style={styles.memberEmail}>{member.email}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Harcamalar</Text>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={handleCreateExpense}
+            >
+              <Ionicons name="add" size={24} color={COLORS.PRIMARY} />
+            </TouchableOpacity>
+          </View>
+          {isExpensesLoading ? (
+            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+          ) : expenses.length === 0 ? (
+            <Text style={styles.emptyText}>
+              Henüz harcama eklenmemiş
+            </Text>
+          ) : null}
+        </View>
+      </>
+    );
+  };
+
+  const renderFooter = () => (
+    <TouchableOpacity 
+      style={styles.settingsButton}
+      onPress={handleSettingsPress}
+    >
+      <Ionicons name="settings-outline" size={20} color={COLORS.TEXT_DARK} />
+      <Text style={styles.settingsButtonText}>Grup Ayarları</Text>
+    </TouchableOpacity>
+  );
 
   if (isLoading) {
     return (
@@ -132,134 +317,16 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.groupName}>{group.name}</Text>
-            {group.description && (
-              <Text style={styles.description}>{group.description}</Text>
-            )}
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity 
-              style={styles.refreshButton}
-              onPress={handleRefresh}
-              disabled={isRefreshing}
-            >
-              {isRefreshing ? (
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              ) : (
-                <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
-              )}
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={handleEditPress}
-            >
-              <Ionicons name="create-outline" size={24} color={COLORS.PRIMARY} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Group Info Card */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Para Birimi</Text>
-              <Text style={styles.infoValue}>
-                {getCurrencySymbol(group.currency)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Bölüşüm</Text>
-              <Text style={styles.infoValue}>
-                {getSplitMethodText(group.splitMethod)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Toplam Bakiye</Text>
-              <Text style={[
-                styles.infoValue,
-                { color: group.balance >= 0 ? COLORS.POSITIVE : COLORS.NEGATIVE }
-              ]}>
-                {getCurrencySymbol(group.currency)}{Math.abs(group.balance)}
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleAddExpense}
-          >
-            <Ionicons name="add-circle-outline" size={24} color={COLORS.PRIMARY} />
-            <Text style={styles.actionButtonText}>Harcama Ekle</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={handleAddMember}
-          >
-            <Ionicons name="person-add-outline" size={24} color={COLORS.PRIMARY} />
-            <Text style={styles.actionButtonText}>Üye Ekle</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Members Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Üyeler</Text>
-            <Text style={styles.memberCount}>{group.members.length} üye</Text>
-          </View>
-          {group.members.length === 0 ? (
-            <Text style={styles.emptyText}>Henüz üye eklenmemiş</Text>
-          ) : (
-            <View style={styles.memberList}>
-              {group.members.map((member) => (
-                <View key={member.id} style={styles.memberItem}>
-                  <View style={styles.memberAvatar}>
-                    {member.photoURL ? (
-                      <Image 
-                        source={{ uri: member.photoURL }} 
-                        style={styles.avatarImage} 
-                      />
-                    ) : (
-                      <Text style={styles.avatarText}>
-                        {member.fullName?.charAt(0).toUpperCase() || '?'}
-                      </Text>
-                    )}
-                  </View>
-                  <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{member.fullName || 'İsimsiz Kullanıcı'}</Text>
-                    <Text style={styles.memberEmail}>{member.email}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-
-        {/* Recent Expenses Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Son Harcamalar</Text>
-          </View>
-          <View style={styles.expenseList}>
-            <Text style={styles.emptyText}>Henüz harcama eklenmemiş</Text>
-          </View>
-        </View>
-
-        {/* Settings Button */}
-        <TouchableOpacity 
-          style={styles.settingsButton}
-          onPress={handleSettingsPress}
-        >
-          <Ionicons name="settings-outline" size={20} color={COLORS.TEXT_DARK} />
-          <Text style={styles.settingsButtonText}>Grup Ayarları</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      <FlatList
+        data={expenses}
+        renderItem={renderExpenseItem}
+        keyExtractor={item => item.id}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={renderFooter}
+        onRefresh={handleRefresh}
+        refreshing={isRefreshing}
+        contentContainerStyle={styles.listContent}
+      />
     </SafeAreaView>
   );
 }
@@ -268,9 +335,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
-  },
-  content: {
-    flex: 1,
   },
   loadingContainer: {
     flex: 1,
@@ -405,15 +469,52 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  expenseList: {
-    minHeight: 100,
-    justifyContent: 'center',
+  expenseItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: COLORS.TERTIARY,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
-  emptyText: {
+  expenseInfo: {
+    flex: 1,
+    marginRight: 12,
+  },
+  expenseTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: 4,
+  },
+  expenseDate: {
     fontSize: 14,
     color: COLORS.TEXT_GRAY,
-    textAlign: 'center',
+  },
+  expenseAmount: {
+    alignItems: 'flex-end',
+  },
+  amountText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  settledStatus: {
+    color: COLORS.POSITIVE,
+  },
+  pendingStatus: {
+    color: COLORS.NEGATIVE,
+  },
+  addButton: {
+    padding: 8,
+    backgroundColor: COLORS.TERTIARY,
+    borderRadius: 8,
   },
   settingsButton: {
     flexDirection: 'row',
@@ -478,5 +579,14 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.TERTIARY,
     borderRadius: 8,
     marginRight: 8,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: COLORS.TEXT_GRAY,
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  listContent: {
+    padding: 16,
   },
 });

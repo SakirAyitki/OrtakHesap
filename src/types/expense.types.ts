@@ -1,51 +1,55 @@
 import { User, UserSummary } from './user.types';
+import { GroupMember } from './group.types';
 
 // Temel harcama bilgilerini içeren tip
 export type Expense = {
     id: string;
     groupId: string;
-    description: string;
+    title: string;
+    description?: string;
     amount: number;
     currency: 'TRY' | 'USD' | 'EUR';
-    date: Date | string;
-    createdAt: Date | string;
-    updatedAt: Date | string;
-    category: ExpenseCategory;
-    paidBy: UserSummary;
+    paidBy: string; // User ID
+    paidByUser?: GroupMember; // User details who paid
+    splitMethod: 'equal' | 'percentage' | 'amount';
     participants: ExpenseParticipant[];
+    category?: string;
+    date: Date;
+    createdAt: Date;
+    updatedAt: Date;
     status: ExpenseStatus;
-    notes?: string;
-    attachments?: string[]; // Dosya URL'leri
+    attachments?: string[]; // URLs
 };
 
 // Harcama kategorileri
-export type ExpenseCategory = 
-    | 'Gıda' 
-    | 'Ulaşım' 
-    | 'Alış-Veriş'
-    | 'İçerik'
-    | 'Araç-Gereç'
-    | 'Kiralama'
-    | 'Diğer'
-    | 'Hizmet'
-    | 'Konut'
-    | 'Eğitim'
-    | 'Sağlık'
-    | 'Kişisel'
-    | 'Diğer';
+export const EXPENSE_CATEGORIES = [
+    'Yiyecek & İçecek',
+    'Market',
+    'Ulaşım',
+    'Konaklama',
+    'Eğlence',
+    'Alışveriş',
+    'Faturalar',
+    'Diğer'
+] as const;
+
+export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 
 // Harcama durumu
 export type ExpenseStatus = 
-    | 'pending'    // Henüz ödenmemiş
-    | 'settled'    // Tamamen ödenmiş
-    | 'partially_settled'; // Kısmen ödenmiş
+    | 'pending'   // Onay bekliyor
+    | 'approved'  // Onaylandı
+    | 'rejected'  // Reddedildi
+    | 'settled'   // Ödendi
+    | 'cancelled'; // İptal edildi
 
 // Harcamaya katılan kişilerin detayları
 export type ExpenseParticipant = {
-    user: UserSummary;
-    share: number;        // Kişinin ödemesi gereken miktar
-    paidAmount: number;   // Kişinin ödediği miktar
-    settled: boolean;     // Kişinin ödemeyi tamamlayıp tamamlamadığı
+    userId: string;
+    share: number; // Tutar veya yüzde
+    paid: boolean;
+    paidAmount?: number;
+    paidAt?: Date;
 };
 
 // Yeni harcama oluşturmak için gerekli veriler
@@ -58,7 +62,8 @@ export type UpdateExpenseData = Partial<CreateExpenseData>;
 
 // Harcama özeti (liste görünümü için)
 export type ExpenseSummary = Pick<Expense, 
-    'id' | 'description' | 'amount' | 'currency' | 'date' | 'category' | 'status'
+    'id' | 'title' | 'amount' | 'currency' | 'date' | 'status'
 > & {
-    paidBy: UserSummary;
+    paidByUser: GroupMember;
+    participantCount: number;
 };

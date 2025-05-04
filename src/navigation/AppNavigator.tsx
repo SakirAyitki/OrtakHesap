@@ -2,17 +2,20 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../utils/color';
+import { NavigatorScreenParams } from '@react-navigation/native';
+import { GroupStackParamList } from '../types/navigation.types';
+import { ExpensesStackParamList } from './ExpensesNavigator';
 
 // Navigators & Screens
 import GroupNavigator from './GroupNavigator';
-import ExpensesScreen from '../screens/expenses/ExpensesScreen';
+import ExpensesNavigator from './ExpensesNavigator';
 import BalanceScreen from '../screens/expenses/BalanceScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
 // Types
 export type AppTabParamList = {
-  Groups: undefined;
-  Expenses: undefined;
+  Groups: NavigatorScreenParams<GroupStackParamList>;
+  Expenses: NavigatorScreenParams<ExpensesStackParamList>;
   Balance: undefined;
   Profile: undefined;
 };
@@ -64,7 +67,7 @@ export default function AppNavigator() {
       />
       <Tab.Screen 
         name="Expenses" 
-        component={ExpensesScreen}
+        component={ExpensesNavigator}
         options={{ title: 'Harcamalar' }}
       />
       <Tab.Screen 

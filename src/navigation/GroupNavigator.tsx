@@ -1,11 +1,14 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GroupStackParamList } from '../types/navigation.types';
-import GroupsScreen from '../screens/groups/GroupsScreen';
-import CreateGroupScreen from '../screens/groups/CreateGroupScreen';
+import GroupListScreen from '../screens/groups/GroupListScreen';
 import GroupDetailScreen from '../screens/groups/GroupDetailScreen';
-import EditGroupScreen from '../screens/groups/GroupEditScreen';
+import CreateGroupScreen from '../screens/groups/CreateGroupScreen';
 import AddMemberScreen from '../screens/groups/AddMemberScreen';
+import CreateExpenseScreen from '../screens/expenses/CreateExpenseScreen';
+import ExpenseDetailsScreen from '../screens/expenses/ExpenseDetailsScreen';
+import EditExpenseScreen from '../screens/expenses/EditExpenseScreen';
+import EditGroupScreen from '../screens/groups/EditGroupScreen';
 import GroupSettingsScreen from '../screens/groups/GroupSettingsScreen';
 import { COLORS } from '../utils/color';
 
@@ -15,43 +18,65 @@ export default function GroupNavigator() {
   return (
     <Stack.Navigator
       screenOptions={{
-        headerShown: true,
         headerStyle: {
           backgroundColor: COLORS.BACKGROUND,
         },
         headerTintColor: COLORS.TEXT_DARK,
-        headerShadowVisible: false,
+        headerTitleStyle: {
+          fontWeight: 'bold',
+        },
       }}
     >
-      <Stack.Screen 
-        name="GroupList" 
-        component={GroupsScreen}
-        options={{ headerShown: false }}
+      <Stack.Screen
+        name="GroupList"
+        component={GroupListScreen}
+        options={{ title: 'Gruplar' }}
       />
-      <Stack.Screen 
-        name="CreateGroup" 
-        component={CreateGroupScreen}
-        options={{ title: 'Yeni Grup' }}
-      />
-      <Stack.Screen 
-        name="GroupDetails" 
+      <Stack.Screen
+        name="GroupDetail"
         component={GroupDetailScreen}
         options={{ title: 'Grup Detayı' }}
       />
-      <Stack.Screen 
-        name="EditGroup" 
-        component={EditGroupScreen}
-        options={{ title: 'Grubu Düzenle' }}
+      <Stack.Screen
+        name="CreateGroup"
+        component={CreateGroupScreen}
+        options={{ title: 'Yeni Grup' }}
       />
-      <Stack.Screen 
-        name="AddMember" 
+      <Stack.Screen
+        name="AddMember"
         component={AddMemberScreen}
         options={{ title: 'Üye Ekle' }}
       />
-      <Stack.Screen 
-        name="GroupSettings" 
+      <Stack.Screen
+        name="CreateExpense"
+        component={CreateExpenseScreen}
+        options={{ title: 'Yeni Harcama' }}
+      />
+      <Stack.Screen
+        name="ExpenseDetails"
+        component={ExpenseDetailsScreen}
+        options={{ title: 'Harcama Detayı' }}
+      />
+      <Stack.Screen
+        name="EditExpense"
+        component={EditExpenseScreen}
+        options={{ title: 'Harcama Düzenle' }}
+      />
+      <Stack.Screen
+        name="EditGroup"
+        component={EditGroupScreen}
+        options={{
+          title: 'Grubu Düzenle',
+          headerBackTitle: 'Geri',
+        }}
+      />
+      <Stack.Screen
+        name="GroupSettings"
         component={GroupSettingsScreen}
-        options={{ title: 'Grup Ayarları' }}
+        options={{
+          title: 'Grup Ayarları',
+          headerBackTitle: 'Geri',
+        }}
       />
     </Stack.Navigator>
   );

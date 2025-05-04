@@ -1,0 +1,37 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Mevcut kurallar aynen kalsın
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /groups/{groupId} {
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/groups/$(groupId)/members/$(request.auth.uid));
+      allow write: if request.auth != null;
+
+      // Expenses alt koleksiyonu için kurallar
+      match /expenses/{expenseId} {
+        allow read, write: if request.auth != null && 
+          get(/databases/$(database)/documents/groups/$(groupId)).data.members.hasAny([request.auth.uid]);
+      }
+    }
+    
+    match /expenses/{expenseId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
+    // Geliştirme aşaması için ek kural
+    match /groups/{groupId} {
+      allow read, write: if true;  // Geçici olarak tüm grup işlemlerine izin ver
+      
+      // Geliştirme aşaması için expenses alt koleksiyonuna da izin ver
+      match /expenses/{expenseId} {
+        allow read, write: if true;
+      }
+    }
+  }
+} 

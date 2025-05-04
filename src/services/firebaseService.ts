@@ -1,30 +1,39 @@
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-  sendPasswordResetEmail,
-  updateProfile,
-  signOut,
-  User as FirebaseUser
-} from 'firebase/auth';
-import { LoginCredentials, RegisterData } from '../types/auth.types';
-import { User } from '../types/user.types';
-import { auth, db } from '../config/firebase';
+import { initializeApp } from 'firebase/app';
 import {
-  doc,
-  setDoc,
-  getDoc,
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  updateProfile,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import {
+  getFirestore,
   collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
   query,
   where,
-  getDocs,
+  orderBy,
+  limit,
+  DocumentData,
+  QueryDocumentSnapshot,
   addDoc,
-  updateDoc,
   serverTimestamp,
-  limit
+  Timestamp,
 } from 'firebase/firestore';
-import { Group, CreateGroupData } from '../types/group.types';
+import { User } from '../types/user.types';
+import { Expense } from '../types/expense.types';
+import { LoginCredentials, RegisterData } from '../types/auth.types';
+import { auth, db } from '../config/firebase';
+import { sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
+import { CreateGroupData, GroupMember } from '../types/group.types';
+import type { Group } from '../types/group.types';
+import { CreateExpenseData, UpdateExpenseData } from '../types/expense.types';
 
 // Firebase user'ı User tipine dönüştüren yardımcı fonksiyon
 const mapFirebaseUserToUser = (firebaseUser: FirebaseUser): User => ({
@@ -223,44 +232,43 @@ class FirebaseService {
     }
   }
 
-  async getGroups(): Promise<Group[]> {
+  async getUserGroups(): Promise<Group[]> {
     try {
-      console.log('Fetching groups...');
-      const currentUser = auth.currentUser;
-      console.log('Current user:', currentUser?.uid);
-
+      const currentUser = await this.getCurrentUser(auth.currentUser as FirebaseUser);
       if (!currentUser) {
-        console.error('No authenticated user found');
-        return [];
+        throw new Error('User not authenticated');
       }
 
       const groupsRef = collection(db, 'groups');
-      console.log('Collection reference created');
-      
-      const q = query(
-        groupsRef,
-        where('members', 'array-contains', currentUser.uid),
-        where('status', '==', 'active')
+      const q = query(groupsRef, where('members', 'array-contains', currentUser.id));
+      const groupsSnapshot = await getDocs(q);
+
+      const groups = await Promise.all(
+        groupsSnapshot.docs.map(async (doc: QueryDocumentSnapshot<DocumentData>) => {
+          const groupData = doc.data();
+          const memberDetails = await Promise.all(
+            groupData.members.map(async (memberId: string) => {
+              const user = await this.getUserById(memberId);
+              return user ? {
+                id: user.id,
+                fullName: user.fullName,
+                email: user.email,
+                photoURL: user.photoURL,
+              } : undefined;
+            })
+          );
+
+          return {
+            ...groupData,
+            id: doc.id,
+            members: memberDetails.filter(Boolean),
+          } as Group;
+        })
       );
-      console.log('Query created');
-      
-      const querySnapshot = await getDocs(q);
-      console.log('Query executed, document count:', querySnapshot.size);
 
-      const groups = querySnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          createdAt: data.createdAt?.toDate() || new Date(),
-          updatedAt: data.updatedAt?.toDate() || new Date(),
-        };
-      }) as Group[];
-
-      console.log('Fetched groups:', groups);
       return groups;
     } catch (error) {
-      console.error('Error fetching groups:', error);
+      console.error('Error getting user groups:', error);
       throw error;
     }
   }
@@ -432,6 +440,149 @@ class FirebaseService {
     } catch (error) {
       console.error('Error searching users:', error);
       throw error;
+    }
+  }
+
+  // Harcama yönetimi metodları
+  async createExpense(groupId: string, expenseData: CreateExpenseData): Promise<string> {
+    try {
+      console.log('Creating expense:', expenseData);
+      const expensesRef = collection(db, 'groups', groupId, 'expenses');
+      
+      const expenseToCreate = {
+        ...expenseData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        status: 'pending',
+      };
+
+      const docRef = await addDoc(expensesRef, expenseToCreate);
+      console.log('Expense created with ID:', docRef.id);
+      
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating expense:', error);
+      throw error;
+    }
+  }
+
+  async getExpenses(groupId: string): Promise<Expense[]> {
+    try {
+      console.log('Fetching expenses for group:', groupId);
+      const expensesRef = collection(db, 'groups', groupId, 'expenses');
+      const q = query(expensesRef, orderBy('createdAt', 'desc'));
+      
+      const expensesSnapshot = await getDocs(q);
+      console.log('Found expenses:', expensesSnapshot.size);
+
+      const expenses = await Promise.all(
+        expensesSnapshot.docs.map(async (doc: QueryDocumentSnapshot<DocumentData>) => {
+          const expenseData = doc.data() as Omit<Expense, 'id'>;
+          const paidByUser = await this.getUserById(expenseData.paidBy);
+
+          return {
+            ...expenseData,
+            id: doc.id,
+            createdAt: expenseData.createdAt instanceof Timestamp ? expenseData.createdAt.toDate() : new Date(),
+            updatedAt: expenseData.updatedAt instanceof Timestamp ? expenseData.updatedAt.toDate() : new Date(),
+            paidBy: expenseData.paidBy,
+            paidByUser: paidByUser || undefined,
+          } as Expense;
+        })
+      );
+
+      return expenses;
+    } catch (error) {
+      console.error('Error getting group expenses:', error);
+      throw error;
+    }
+  }
+
+  async getExpenseById(groupId: string, expenseId: string): Promise<Expense> {
+    try {
+      console.log('Fetching expense:', expenseId);
+      const expenseRef = doc(db, 'groups', groupId, 'expenses', expenseId);
+      const expenseDoc = await getDoc(expenseRef);
+
+      if (!expenseDoc.exists()) {
+        throw new Error('Expense not found');
+      }
+
+      const data = expenseDoc.data() as Omit<Expense, 'id' | 'paidByUser'>;
+      const paidByUser = await this.getUserById(data.paidBy);
+
+      return {
+        ...data,
+        id: expenseDoc.id,
+        paidByUser: paidByUser ? {
+          id: paidByUser.id,
+          fullName: paidByUser.fullName,
+          email: paidByUser.email,
+          photoURL: paidByUser.photoURL,
+        } : undefined,
+      };
+    } catch (error) {
+      console.error('Error fetching expense:', error);
+      throw error;
+    }
+  }
+
+  async updateExpense(groupId: string, expenseId: string, updateData: UpdateExpenseData): Promise<void> {
+    try {
+      console.log('Updating expense:', expenseId, updateData);
+      const expenseRef = doc(db, 'groups', groupId, 'expenses', expenseId);
+      
+      await updateDoc(expenseRef, {
+        ...updateData,
+        updatedAt: serverTimestamp(),
+      });
+      
+      console.log('Expense updated successfully');
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      throw error;
+    }
+  }
+
+  async deleteExpense(groupId: string, expenseId: string): Promise<void> {
+    try {
+      console.log('Deleting expense:', expenseId);
+      const expenseRef = doc(db, 'groups', groupId, 'expenses', expenseId);
+      await deleteDoc(expenseRef);
+      console.log('Expense deleted successfully');
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      throw error;
+    }
+  }
+
+  async deleteGroup(groupId: string): Promise<void> {
+    try {
+      const groupRef = doc(db, 'groups', groupId);
+      await deleteDoc(groupRef);
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      throw error;
+    }
+  }
+
+  // Yardımcı metodlar
+  private async getUserById(userId: string): Promise<GroupMember | null> {
+    try {
+      const userDoc = await getDoc(doc(db, 'users', userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        return {
+          id: userDoc.id,
+          email: userData.email || '',
+          fullName: userData.fullName || '',
+          photoURL: userData.photoURL || null,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user:', error);
+      return null;
     }
   }
 }

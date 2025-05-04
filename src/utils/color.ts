@@ -1,8 +1,9 @@
 export const COLORS = {
     PRIMARY: '#007AFF',      // Ana sarı renk (primary actions)
     SECONDARY: '#5856D6',    // Açık sarı (secondary actions)
-    TERTIARY: '#E5E5EA',     // Çok açık sarı (background accents)
-    BACKGROUND: '#FFFFFF',   // Beyaz arkaplan
+    TERTIARY: '#FF2D55',     // Çok açık sarı (background accents)
+    BACKGROUND: '#F2F2F7',    // Beyaz arkaplan
+    WHITE: '#FFFFFF',
     
     // Tamamlayıcı renkler
     TEXT_DARK: '#000000',    // Koyu metin

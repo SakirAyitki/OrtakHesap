@@ -2,29 +2,29 @@ import { UserSummary } from './user.types';
 import { ExpenseSummary } from './expense.types';
 
 // Temel grup bilgilerini içeren tip
-export type Group = {
+export interface Group {
     id: string;
     name: string;
     description?: string;
     currency: 'TRY' | 'USD' | 'EUR';
     splitMethod: 'equal' | 'percentage' | 'amount';
-    createdAt: Date;
-    updatedAt: Date;
+    createdAt: string;
+    updatedAt: string;
     createdBy: string;
     image?: string;
     members: GroupMember[];
     balance: number;
     settings: GroupSettings;
     status: GroupStatus;
-};
+}
 
 // Grup üyelik detayları
-export type GroupMember = {
+export interface GroupMember {
     id: string;
-    email: string;
     fullName: string;
-    photoURL: string | null;
-};
+    email: string;
+    photoURL?: string;
+}
 
 // Grup rolleri
 export type GroupRole = 
@@ -46,6 +46,11 @@ export type MembershipStatus =
 
 // Grup ayarları
 export type GroupSettings = {
+    notifications: {
+        expenseNotifications: boolean;
+        memberNotifications: boolean;
+        balanceNotifications: boolean;
+    };
     autoApproveExpenses: boolean;
     allowMemberInvite: boolean;
 };
@@ -60,9 +65,11 @@ export type GroupSummary = Pick<Group,
 };
 
 // Yeni grup oluşturmak için gerekli veriler
-export type CreateGroupData = Omit<Group,
-    'id' | 'createdAt' | 'updatedAt' | 'members' | 'status'
->;
+export interface CreateGroupData {
+    name: string;
+    description?: string;
+    members: string[];
+}
 
 // Grup güncelleme verileri
 export type UpdateGroupData = Partial<CreateGroupData>;
