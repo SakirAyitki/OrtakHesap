@@ -6,6 +6,9 @@ import {
   signOut,
   updateProfile,
   User as FirebaseUser,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
 } from 'firebase/auth';
 import {
   getFirestore,
@@ -186,24 +189,42 @@ class FirebaseService {
 
   // Kullanıcı güncelleme
   updateUser: (userData: Partial<User>) => Promise<User> = async (userData) => {
-    if (!auth.currentUser) throw new Error('Kullanıcı bulunamadı');
+    try {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Kullanıcı bulunamadı');
 
-    await updateProfile(auth.currentUser, {
-      displayName: userData.fullName,
-      photoURL: userData.photoURL,
-    });
+      // Firebase Auth profilini güncelle
+      await updateProfile(user, {
+        displayName: userData.fullName,
+        photoURL: userData.photoURL,
+      });
 
-    // Güncellenmiş kullanıcı bilgilerini döndür
-    return {
-      id: auth.currentUser.uid,
-      email: auth.currentUser.email!,
-      fullName: auth.currentUser.displayName || '',
-      photoURL: auth.currentUser.photoURL || undefined,
-      createdAt: auth.currentUser.metadata.creationTime!,
-      updatedAt: auth.currentUser.metadata.lastSignInTime!,
-      isEmailVerified: auth.currentUser.emailVerified,
-      phoneNumber: auth.currentUser.phoneNumber || undefined,
-    };
+      // Firestore'daki kullanıcı dokümanını güncelle
+      const userRef = doc(db, 'users', user.uid);
+      await updateDoc(userRef, {
+        ...userData,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Güncellenmiş kullanıcı bilgilerini al
+      const userDoc = await getDoc(userRef);
+      const updatedUserData = userDoc.data();
+
+      return {
+        id: user.uid,
+        email: user.email!,
+        fullName: user.displayName || '',
+        photoURL: user.photoURL || undefined,
+        createdAt: user.metadata.creationTime!,
+        updatedAt: user.metadata.lastSignInTime!,
+        isEmailVerified: user.emailVerified,
+        phoneNumber: user.phoneNumber || undefined,
+        ...updatedUserData,
+      };
+    } catch (error) {
+      console.error('Error updating user:', error);
+      throw new Error('Kullanıcı bilgileri güncellenirken bir hata oluştu');
+    }
   };
 
   // Grup yönetimi metodları
@@ -583,6 +604,42 @@ class FirebaseService {
     } catch (error) {
       console.error('Error fetching user:', error);
       return null;
+    }
+  }
+
+  async updatePassword(currentPassword: string, newPassword: string): Promise<void> {
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error('Kullanıcı bulunamadı');
+
+      // Mevcut şifre ile yeniden kimlik doğrulama
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+
+      // Şifre güncelleme
+      await updatePassword(user, newPassword);
+    } catch (error: any) {
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('Mevcut şifre yanlış');
+      }
+      throw error;
+    }
+  }
+
+  async updateNotificationSettings(userId: string, settings: {
+    emailNotifications: boolean;
+    pushNotifications: boolean;
+    balanceAlerts: boolean;
+    groupInvites: boolean;
+  }): Promise<void> {
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        notificationSettings: settings
+      });
+    } catch (error) {
+      console.error('Error updating notification settings:', error);
+      throw new Error('Bildirim ayarları güncellenirken bir hata oluştu');
     }
   }
 }

@@ -1,13 +1,107 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  ActivityIndicator,
+  TextInput,
+  Alert,
+  Switch,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/color';
 import { useAuth } from '../../hooks/useAuth';
+import firebaseService from '../../services/firebaseService';
 
 export default function ProfileScreen() {
-  const { user, logout } = useAuth();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { user, logout, updateUser } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [fullName, setFullName] = useState(user?.fullName || '');
+  const [email, setEmail] = useState(user?.email || '');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [notificationSettings, setNotificationSettings] = useState({
+    emailNotifications: true,
+    pushNotifications: true,
+    balanceAlerts: true,
+    groupInvites: true,
+  });
+
+  const handleUpdateProfile = async () => {
+    if (!fullName.trim()) {
+      Alert.alert('Hata', 'İsim alanı boş bırakılamaz');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await updateUser({
+        fullName: fullName.trim(),
+      });
+      Alert.alert('Başarılı', 'Profil bilgileriniz güncellendi');
+      setIsEditing(false);
+    } catch (error) {
+      Alert.alert('Hata', 'Profil güncellenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Hata', 'Tüm şifre alanları doldurulmalıdır');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Hata', 'Yeni şifreler eşleşmiyor');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      Alert.alert('Hata', 'Yeni şifre en az 6 karakter olmalıdır');
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await firebaseService.updatePassword(currentPassword, newPassword);
+      Alert.alert('Başarılı', 'Şifreniz başarıyla güncellendi');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      Alert.alert('Hata', error.message || 'Şifre güncellenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleNotification = async (setting: keyof typeof notificationSettings) => {
+    if (!user) return;
+
+    try {
+      const newSettings = {
+        ...notificationSettings,
+        [setting]: !notificationSettings[setting],
+      };
+      
+      setNotificationSettings(newSettings);
+      await firebaseService.updateNotificationSettings(user.id, newSettings);
+    } catch (error) {
+      // Hata durumunda eski ayarlara geri dön
+      setNotificationSettings(prevSettings => ({
+        ...prevSettings,
+        [setting]: !prevSettings[setting],
+      }));
+      Alert.alert('Hata', 'Bildirim ayarları güncellenirken bir hata oluştu');
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -17,65 +111,173 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      // TODO: Implement refresh logic
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulated delay
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Profil</Text>
-        <TouchableOpacity 
-          style={styles.refreshButton}
-          onPress={handleRefresh}
-          disabled={isRefreshing}
-        >
-          {isRefreshing ? (
-            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-          ) : (
-            <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
-          )}
-        </TouchableOpacity>
-      </View>
-
       <ScrollView style={styles.content}>
-        <View style={styles.profileSection}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>
-              {user?.fullName?.charAt(0).toUpperCase() || '?'}
-            </Text>
-          </View>
-          <Text style={styles.name}>{user?.fullName || 'İsimsiz Kullanıcı'}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
+        {/* Profil Başlığı */}
+        <View style={styles.header}>
+          <Text style={styles.title}>Profil</Text>
         </View>
 
+        {/* Profil Bilgileri */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="person-outline" size={24} color={COLORS.PRIMARY} />
-            <Text style={styles.menuText}>Hesap Bilgileri</Text>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.TEXT_GRAY} />
-          </TouchableOpacity>
+          <Text style={styles.sectionTitle}>Profil Bilgileri</Text>
+          
+          <View style={styles.profileSection}>
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>
+                {user?.fullName?.charAt(0).toUpperCase() || '?'}
+              </Text>
+            </View>
+            
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Ad Soyad</Text>
+              <TextInput
+                style={[styles.input, !isEditing && styles.disabledInput]}
+                value={fullName}
+                onChangeText={setFullName}
+                editable={isEditing}
+                placeholder="Ad Soyad"
+              />
+            </View>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="settings-outline" size={24} color={COLORS.PRIMARY} />
-            <Text style={styles.menuText}>Ayarlar</Text>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.TEXT_GRAY} />
-          </TouchableOpacity>
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>E-posta</Text>
+              <TextInput
+                style={[styles.input, styles.disabledInput]}
+                value={email}
+                editable={false}
+                placeholder="E-posta"
+              />
+            </View>
 
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="help-circle-outline" size={24} color={COLORS.PRIMARY} />
-            <Text style={styles.menuText}>Yardım</Text>
-            <Ionicons name="chevron-forward" size={24} color={COLORS.TEXT_GRAY} />
+            {!isEditing ? (
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => setIsEditing(true)}
+              >
+                <Text style={styles.editButtonText}>Profili Düzenle</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.editActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.cancelButton]}
+                  onPress={() => {
+                    setIsEditing(false);
+                    setFullName(user?.fullName || '');
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>İptal</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.saveButton]}
+                  onPress={handleUpdateProfile}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Kaydet</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Şifre Değiştirme */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Şifre Değiştirme</Text>
+          
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Mevcut Şifre</Text>
+            <TextInput
+              style={styles.input}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              placeholder="Mevcut şifrenizi girin"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Yeni Şifre</Text>
+            <TextInput
+              style={styles.input}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              placeholder="Yeni şifrenizi girin"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
+            <TextInput
+              style={styles.input}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              placeholder="Yeni şifrenizi tekrar girin"
+            />
+          </View>
+
+          <TouchableOpacity
+            style={[styles.changePasswordButton, (!currentPassword || !newPassword || !confirmPassword) && styles.disabledButton]}
+            onPress={handleChangePassword}
+            disabled={!currentPassword || !newPassword || !confirmPassword || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+            ) : (
+              <Text style={styles.buttonText}>Şifreyi Değiştir</Text>
+            )}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity 
+        {/* Bildirim Ayarları */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Bildirim Tercihleri</Text>
+          
+          <View style={styles.settingItem}>
+            <Text style={styles.settingText}>E-posta Bildirimleri</Text>
+            <Switch
+              value={notificationSettings.emailNotifications}
+              onValueChange={() => handleToggleNotification('emailNotifications')}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <Text style={styles.settingText}>Push Bildirimleri</Text>
+            <Switch
+              value={notificationSettings.pushNotifications}
+              onValueChange={() => handleToggleNotification('pushNotifications')}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <Text style={styles.settingText}>Bakiye Uyarıları</Text>
+            <Switch
+              value={notificationSettings.balanceAlerts}
+              onValueChange={() => handleToggleNotification('balanceAlerts')}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <Text style={styles.settingText}>Grup Davetleri</Text>
+            <Switch
+              value={notificationSettings.groupInvites}
+              onValueChange={() => handleToggleNotification('groupInvites')}
+              trackColor={{ false: COLORS.BORDER, true: COLORS.PRIMARY }}
+            />
+          </View>
+        </View>
+
+        {/* Çıkış Yap */}
+        <TouchableOpacity
           style={styles.logoutButton}
           onPress={handleLogout}
         >
@@ -91,6 +293,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
   },
+  content: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -104,22 +309,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.TEXT_DARK,
   },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.TERTIARY,
-    justifyContent: 'center',
-    alignItems: 'center',
+  section: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.BORDER,
   },
-  content: {
-    flex: 1,
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
+    marginBottom: 16,
   },
   profileSection: {
     alignItems: 'center',
-    padding: 32,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
   },
   avatarContainer: {
     width: 80,
@@ -135,29 +337,93 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: COLORS.PRIMARY,
   },
-  name: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
-    marginBottom: 4,
+  inputContainer: {
+    width: '100%',
+    marginBottom: 16,
   },
-  email: {
+  label: {
+    fontSize: 14,
+    color: COLORS.TEXT_GRAY,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 8,
+    padding: 12,
     fontSize: 16,
+    color: COLORS.TEXT_DARK,
+  },
+  disabledInput: {
+    backgroundColor: COLORS.BACKGROUND,
     color: COLORS.TEXT_GRAY,
   },
-  section: {
-    padding: 16,
+  editButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 8,
   },
-  menuItem: {
+  editButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  editActions: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 16,
   },
-  menuText: {
+  actionButton: {
     flex: 1,
-    marginLeft: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: COLORS.BACKGROUND,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+  },
+  saveButton: {
+    backgroundColor: COLORS.PRIMARY,
+    marginLeft: 8,
+  },
+  cancelButtonText: {
+    color: COLORS.TEXT_DARK,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  changePasswordButton: {
+    backgroundColor: COLORS.PRIMARY,
+    padding: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  buttonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  settingItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  settingText: {
     fontSize: 16,
     color: COLORS.TEXT_DARK,
   },
@@ -173,4 +439,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-}); 
+});
