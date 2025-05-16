@@ -68,7 +68,7 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.container}>
         {/* Background Wave */}
         <View style={styles.backgroundWave} />
-        
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
@@ -81,7 +81,7 @@ export default function LoginScreen() {
           style={styles.keyboardView}
           keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
-          <ScrollView 
+          <ScrollView
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             bounces={true}
@@ -94,7 +94,11 @@ export default function LoginScreen() {
               {/* Email Input */}
               <View style={styles.inputContainer}>
                 <View style={styles.iconContainer}>
-                  <MaterialCommunityIcons name="email-outline" size={20} color={COLORS.PRIMARY} />
+                  <MaterialCommunityIcons
+                    name="email-outline"
+                    size={20}
+                    color={COLORS.PRIMARY}
+                  />
                 </View>
                 <TextInput
                   style={styles.input}
@@ -109,7 +113,11 @@ export default function LoginScreen() {
               {/* Password Input */}
               <View style={styles.inputContainer}>
                 <View style={styles.iconContainer}>
-                  <MaterialCommunityIcons name="lock-outline" size={20} color={COLORS.PRIMARY} />
+                  <MaterialCommunityIcons
+                    name="lock-outline"
+                    size={20}
+                    color={COLORS.PRIMARY}
+                  />
                 </View>
                 <TextInput
                   style={styles.input}
@@ -122,13 +130,19 @@ export default function LoginScreen() {
                   style={styles.eyeIcon}
                   onPress={() => setShowPassword(!showPassword)}
                 >
-                  <Feather name={showPassword ? "eye" : "eye-off"} size={20} color="#888" />
+                  <Feather
+                    name={showPassword ? "eye" : "eye-off"}
+                    size={20}
+                    color="#888"
+                  />
                 </TouchableOpacity>
               </View>
 
               {/* Forgot Password */}
               <View style={styles.optionsRow}>
-                <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("ForgotPassword")}
+                >
                   <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
                 </TouchableOpacity>
               </View>
@@ -149,7 +163,9 @@ export default function LoginScreen() {
               {/* Sign Up Link */}
               <View style={styles.footer}>
                 <Text style={styles.footerText}>Hesabın yok mu? </Text>
-                <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate("Register")}
+                >
                   <Text style={styles.signUpText}>Hesap Oluştur</Text>
                 </TouchableOpacity>
               </View>
@@ -167,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND,
   },
   backgroundWave: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -177,9 +193,9 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: width * 0.1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 20,
     zIndex: 1,
@@ -188,8 +204,8 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   menuButton: {
     padding: 8,
@@ -212,12 +228,12 @@ const styles = StyleSheet.create({
     marginBottom: 32,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
     marginBottom: 24,
-    position: 'relative',
+    position: "relative",
   },
   iconContainer: {
     paddingRight: 10,
@@ -232,22 +248,22 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   optionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 32,
   },
   rememberMeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   checkbox: {
     width: 18,
     height: 18,
     borderWidth: 1,
     borderColor: COLORS.PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 8,
   },
   checked: {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,32 +8,29 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS } from '../../utils/color';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { GroupStackParamList } from '../../types/navigation.types';
-import { firebaseService } from '../../services/firebaseService';
-import { User } from '../../types/user.types';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { COLORS } from "../../utils/color";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { GroupStackParamList } from "../../types/navigation.types";
+import { firebaseService } from "../../services/firebaseService";
+import { User } from "../../types/user.types";
 
 type AddMemberScreenNavigationProp = NativeStackNavigationProp<
   GroupStackParamList,
-  'AddMember'
+  "AddMember"
 >;
 
-type AddMemberScreenRouteProp = RouteProp<
-  GroupStackParamList,
-  'AddMember'
->;
+type AddMemberScreenRouteProp = RouteProp<GroupStackParamList, "AddMember">;
 
 export default function AddMemberScreen() {
   const navigation = useNavigation<AddMemberScreenNavigationProp>();
   const route = useRoute<AddMemberScreenRouteProp>();
   const { groupId } = route.params;
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [searchResults, setSearchResults] = useState<User[]>([]);
@@ -47,13 +44,13 @@ export default function AddMemberScreen() {
     setSearchResults([]);
 
     try {
-      console.log('Starting user search with query:', searchQuery.trim());
+      console.log("Starting user search with query:", searchQuery.trim());
       const users = await firebaseService.searchUsers(searchQuery.trim());
-      console.log('Search results:', users);
+      console.log("Search results:", users);
       setSearchResults(users);
     } catch (error) {
-      console.error('Error searching users:', error);
-      setError('Kullanıcı araması sırasında bir hata oluştu');
+      console.error("Error searching users:", error);
+      setError("Kullanıcı araması sırasında bir hata oluştu");
     } finally {
       setIsLoading(false);
     }
@@ -69,23 +66,21 @@ export default function AddMemberScreen() {
 
       // Kullanıcı zaten üye mi kontrol et
       if (group.members.includes(user.id)) {
-        Alert.alert('Hata', 'Bu kullanıcı zaten grubun üyesi');
+        Alert.alert("Hata", "Bu kullanıcı zaten grubun üyesi");
         return;
       }
 
       // Üye ekle
       await firebaseService.updateGroup(groupId, {
-        members: [...group.members, user.id]
+        members: [...group.members, user.id],
       });
 
-      Alert.alert(
-        'Başarılı',
-        'Üye başarıyla eklendi',
-        [{ text: 'Tamam', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert("Başarılı", "Üye başarıyla eklendi", [
+        { text: "Tamam", onPress: () => navigation.goBack() },
+      ]);
     } catch (error) {
-      console.error('Error adding member:', error);
-      setError('Üye eklenirken bir hata oluştu');
+      console.error("Error adding member:", error);
+      setError("Üye eklenirken bir hata oluştu");
     } finally {
       setIsAdding(false);
     }
@@ -148,8 +143,8 @@ export default function AddMemberScreen() {
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               {searchQuery
-                ? 'Kullanıcı bulunamadı'
-                : 'Kullanıcı aramak için yukarıdaki arama kutusunu kullanın'}
+                ? "Kullanıcı bulunamadı"
+                : "Kullanıcı aramak için yukarıdaki arama kutusunu kullanın"}
             </Text>
           </View>
         }
@@ -164,7 +159,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.BACKGROUND,
   },
   searchContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     padding: 16,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.BORDER,
@@ -183,8 +178,8 @@ const styles = StyleSheet.create({
   searchButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: COLORS.TERTIARY,
     borderRadius: 8,
   },
@@ -192,8 +187,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     backgroundColor: COLORS.BACKGROUND,
     borderRadius: 8,
@@ -206,7 +201,7 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     color: COLORS.TEXT_DARK,
     marginBottom: 4,
   },
@@ -217,8 +212,8 @@ const styles = StyleSheet.create({
   addButton: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: COLORS.TERTIARY,
     borderRadius: 20,
   },
@@ -227,17 +222,17 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 16,
     color: COLORS.TEXT_GRAY,
-    textAlign: 'center',
+    textAlign: "center",
   },
   errorText: {
     color: COLORS.NEGATIVE,
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
     padding: 16,
   },
-}); 
+});
