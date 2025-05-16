@@ -32,7 +32,7 @@ type EditExpenseScreenRouteProp = RouteProp<
 >;
 
 type CurrencyType = 'TRY' | 'USD' | 'EUR';
-type SplitMethodType = 'equal' | 'percentage' | 'amount';
+type SplitMethodType = 'equal';
 
 export default function EditExpenseScreen() {
   const navigation = useNavigation<EditExpenseScreenNavigationProp>();
@@ -230,8 +230,6 @@ export default function EditExpenseScreen() {
                 style={styles.picker}
               >
                 <Picker.Item label="Eşit" value="equal" />
-                <Picker.Item label="Yüzdesel" value="percentage" />
-                <Picker.Item label="Manuel" value="amount" />
               </Picker>
             </View>
           </View>

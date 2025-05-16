@@ -440,12 +440,7 @@ export default function GroupDetailScreen() {
   };
 
   const getSplitMethodText = (method: string) => {
-    switch (method) {
-      case 'equal': return 'Eşit Bölüşüm';
-      case 'percentage': return 'Yüzdesel Bölüşüm';
-      case 'amount': return 'Manuel Bölüşüm';
-      default: return method;
-    }
+    return 'Eşit Bölüşüm';
   };
 
   return (

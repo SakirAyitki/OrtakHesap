@@ -162,7 +162,11 @@ export default function ExpensesScreen() {
           </View>
           <View style={styles.footerInfo}>
             <Text style={styles.footerLabel}>Katılımcılar</Text>
-            <Text style={styles.footerValue}>{item.participants.length} kişi</Text>
+            <Text style={styles.footerValue}>
+              {item.participants.length > 0 
+                ? item.participants.length 
+                : selectedGroup?.members.length || 0} kişi
+            </Text>
           </View>
         </View>
       </LinearGradient>

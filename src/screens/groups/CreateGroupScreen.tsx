@@ -30,8 +30,8 @@ type CreateGroupScreenNavigationProp = NativeStackNavigationProp<
   'CreateGroup'
 >;
 
-type CurrencyType = 'TRY' | 'USD' | 'EUR';
-type SplitMethodType = 'equal' | 'percentage' | 'amount';
+type CurrencyType = 'TRY';
+type SplitMethodType = 'equal';
 
 type Member = {
   id: string;
@@ -57,12 +57,9 @@ export default function CreateGroupScreen() {
   const [addedMembers, setAddedMembers] = useState<Member[]>([]);
 
   // Currency Picker State
-  const [currencyOpen, setCurrencyOpen] = useState(false);
   const [currency, setCurrency] = useState<CurrencyType>('TRY');
   const [currencyItems] = useState([
     { label: 'Türk Lirası (₺)', value: 'TRY' },
-    { label: 'Amerikan Doları ($)', value: 'USD' },
-    { label: 'Euro (€)', value: 'EUR' },
   ]);
 
   // Split Method Picker State
@@ -70,8 +67,6 @@ export default function CreateGroupScreen() {
   const [splitMethod, setSplitMethod] = useState<SplitMethodType>('equal');
   const [splitMethodItems] = useState([
     { label: 'Eşit Bölüşüm', value: 'equal' },
-    { label: 'Yüzdesel Bölüşüm', value: 'percentage' },
-    { label: 'Manuel Bölüşüm', value: 'amount' },
   ]);
   
   // E-posta doğrulama kontrolü
@@ -208,7 +203,6 @@ export default function CreateGroupScreen() {
 
   // Dropdown menüler açıkken z-index yönetimi
   const zIndexValue = () => {
-    if (currencyOpen) return 2000;
     if (splitMethodOpen) return 1000;
     return 1;
   };
@@ -433,21 +427,16 @@ export default function CreateGroupScreen() {
           <Text style={styles.cardTitle}>Finans Ayarları</Text>
         </View>
 
-        <View style={[styles.inputContainer, { zIndex: 2000 }]}>
+        <View style={[styles.inputContainer]}>
           <Text style={styles.label}>Para Birimi</Text>
-          <DropDownPicker
-            open={currencyOpen}
-            value={currency}
-            items={currencyItems}
-            setOpen={setCurrencyOpen}
-            setValue={setCurrency}
-            {...dropdownStyles}
-            style={[dropdownStyles.style, styles.dropdown]}
-            dropDownContainerStyle={[dropdownStyles.dropDownContainerStyle, styles.dropdownContainer]}
-            placeholder="Para birimi seçin"
-          />
+          <View style={styles.currencyContainer}>
+            <View style={styles.currencyItem}>
+              <MaterialIcons name="payment" size={22} color={COLORS.PRIMARY} style={styles.currencyIcon} />
+              <Text style={styles.currencyText}>Türk Lirası (₺)</Text>
+            </View>
+          </View>
           <Text style={styles.inputHelper}>
-            Grup için ana para birimini seçin
+            Şu an için sadece Türk Lirası desteklenmektedir
           </Text>
         </View>
 
@@ -465,9 +454,7 @@ export default function CreateGroupScreen() {
             placeholder="Bölüşme yöntemi seçin"
           />
           <Text style={styles.inputHelper}>
-            {splitMethod === 'equal' ? 'Tüm harcamalar eşit olarak bölüşülecek' :
-            splitMethod === 'percentage' ? 'Harcamalar yüzdeye göre bölüşülecek' :
-            'Harcamalar manuel olarak bölüşülecek'}
+            Tüm harcamalar eşit olarak bölüşülecek
           </Text>
         </View>
 
@@ -844,5 +831,27 @@ const styles = StyleSheet.create({
   },
   membersList: {
     maxHeight: 200,
+  },
+  currencyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.BORDER,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: COLORS.WHITE,
+  },
+  currencyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  currencyIcon: {
+    marginRight: 8,
+  },
+  currencyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_DARK,
   },
 }); 

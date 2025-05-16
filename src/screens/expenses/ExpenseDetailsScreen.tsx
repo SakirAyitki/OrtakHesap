@@ -195,8 +195,7 @@ export default function ExpenseDetailsScreen() {
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Bölüşüm</Text>
             <Text style={styles.detailValue}>
-              {expense.splitMethod === 'equal' ? 'Eşit' :
-               expense.splitMethod === 'percentage' ? 'Yüzdesel' : 'Manuel'}
+              Eşit
             </Text>
           </View>
 
@@ -251,11 +250,7 @@ export default function ExpenseDetailsScreen() {
                         {participant.userId === expense.paidBy && ' (Ödeyen)'}
                       </Text>
                       <Text style={styles.participantStatus}>
-                        {expense.splitMethod === 'equal' 
-                          ? 'Eşit Pay' 
-                          : expense.splitMethod === 'percentage' 
-                            ? '%' + (100 / expense.participants.length).toFixed(0) + ' Pay' 
-                            : 'Manuel Pay'}
+                        Eşit Pay
                       </Text>
                     </View>
                     <View style={[
@@ -288,11 +283,7 @@ export default function ExpenseDetailsScreen() {
                         {isPayer && ' (Ödeyen)'}
                       </Text>
                       <Text style={styles.participantStatus}>
-                        {expense.splitMethod === 'equal' 
-                          ? 'Eşit Pay' 
-                          : expense.splitMethod === 'percentage' 
-                            ? '%' + (100 / groupMembers.length).toFixed(0) + ' Pay' 
-                            : 'Manuel Pay'}
+                        Eşit Pay
                       </Text>
                     </View>
                     <View style={[
