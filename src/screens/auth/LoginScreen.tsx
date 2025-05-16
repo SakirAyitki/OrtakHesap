@@ -12,14 +12,16 @@ import {
   ScrollView,
   Keyboard,
   TouchableWithoutFeedback,
+  StatusBar,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../hooks/useAuth";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../../types/auth.types";
 import { useNavigation } from "@react-navigation/native";
-import { MaterialCommunityIcons, Feather, Ionicons } from "@expo/vector-icons";
+import { MaterialCommunityIcons, Feather, Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { COLORS } from "../../utils/color";
+import { LinearGradient } from "expo-linear-gradient";
 
 type LoginScreenNavigationProp = NativeStackNavigationProp<
   AuthStackParamList,
@@ -40,7 +42,7 @@ export default function LoginScreen() {
 
   const validateForm = () => {
     if (!email || !password) {
-      setValidationError("Tüm alanları doldurunuz");
+      setValidationError("Lütfen tüm alanları doldurunuz");
       return false;
     }
     setValidationError(null);
@@ -66,14 +68,28 @@ export default function LoginScreen() {
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <SafeAreaView style={styles.container}>
-        {/* Background Wave */}
-        <View style={styles.backgroundWave} />
+        <StatusBar barStyle="light-content" />
 
-        {/* Header */}
+        {/* Gradient Background */}
+        <LinearGradient
+          colors={[COLORS.PRIMARY, COLORS.SECONDARY, '#004080']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientBackground}
+        />
+
+        {/* Header with Logo */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Ionicons name="flame" size={24} color="black" />
+            <LinearGradient
+              colors={['#FFFFFF', '#F0F0F0']}
+              style={styles.logoGradient}
+            >
+              <MaterialIcons name="account-balance-wallet" size={36} color={COLORS.PRIMARY} />
+            </LinearGradient>
           </View>
+          <Text style={styles.appTitle}>OrtakHesap</Text>
+          <Text style={styles.appTagline}>Harcamalarınızı birlikte yönetin</Text>
         </View>
 
         <KeyboardAvoidingView
@@ -85,80 +101,105 @@ export default function LoginScreen() {
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             bounces={true}
-            keyboardShouldPersistTaps="always"
-            scrollEventThrottle={16}
+            keyboardShouldPersistTaps="handled"
           >
-            <View style={styles.form}>
-              <Text style={styles.title}>Giriş Yap</Text>
+            <View style={styles.formContainer}>
+              <View style={styles.formCard}>
+                <Text style={styles.title}>Giriş Yap</Text>
+                <Text style={styles.subtitle}>Hesabınıza giriş yaparak harcamalarınızı yönetmeye devam edin</Text>
 
-              {/* Email Input */}
-              <View style={styles.inputContainer}>
-                <View style={styles.iconContainer}>
-                  <MaterialCommunityIcons
-                    name="email-outline"
-                    size={20}
-                    color={COLORS.PRIMARY}
+                {/* Email Input */}
+                <View style={styles.inputContainer}>
+                  <View style={styles.iconContainer}>
+                    <MaterialCommunityIcons
+                      name="email-outline"
+                      size={22}
+                      color={COLORS.PRIMARY}
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="E-Posta"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    placeholderTextColor={COLORS.TEXT_GRAY}
                   />
                 </View>
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="E-Posta"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-              </View>
 
-              {/* Password Input */}
-              <View style={styles.inputContainer}>
-                <View style={styles.iconContainer}>
-                  <MaterialCommunityIcons
-                    name="lock-outline"
-                    size={20}
-                    color={COLORS.PRIMARY}
+                {/* Password Input */}
+                <View style={styles.inputContainer}>
+                  <View style={styles.iconContainer}>
+                    <MaterialCommunityIcons
+                      name="lock-outline"
+                      size={22}
+                      color={COLORS.PRIMARY}
+                    />
+                  </View>
+                  <TextInput
+                    style={styles.input}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="Şifre"
+                    secureTextEntry={!showPassword}
+                    placeholderTextColor={COLORS.TEXT_GRAY}
                   />
+                  <TouchableOpacity
+                    style={styles.eyeIcon}
+                    onPress={() => setShowPassword(!showPassword)}
+                  >
+                    <Feather
+                      name={showPassword ? "eye" : "eye-off"}
+                      size={20}
+                      color={COLORS.TEXT_GRAY}
+                    />
+                  </TouchableOpacity>
                 </View>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Şifre"
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  style={styles.eyeIcon}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <Feather
-                    name={showPassword ? "eye" : "eye-off"}
-                    size={20}
-                    color="#888"
-                  />
-                </TouchableOpacity>
-              </View>
-              
-              {(validationError || error) && (
-                <Text style={styles.errorText}>{validationError || error}</Text>
-              )}
+                
+                {/* Error Messages */}
+                {(validationError || error) && (
+                  <View style={styles.errorContainer}>
+                    <Ionicons name="alert-circle" size={20} color={COLORS.NEGATIVE} />
+                    <Text style={styles.errorText}>{validationError || error}</Text>
+                  </View>
+                )}
 
-              {/* Login Button */}
-              <TouchableOpacity
-                style={[styles.loginButton, isLoading && styles.disabledButton]}
-                onPress={handleLogin}
-                disabled={isLoading}
-              >
-                <Text style={styles.buttonText}>Giriş Yap</Text>
-              </TouchableOpacity>
-
-              {/* Sign Up Link */}
-              <View style={styles.footer}>
-                <Text style={styles.footerText}>Hesabın yok mu? </Text>
-                <TouchableOpacity
-                  onPress={() => navigation.navigate("Register")}
-                >
-                  <Text style={styles.signUpText}>Hesap Oluştur</Text>
+                {/* Forgot Password */}
+                <TouchableOpacity style={styles.forgotPasswordButton}>
+                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
                 </TouchableOpacity>
+
+                {/* Login Button */}
+                <TouchableOpacity
+                  style={[styles.loginButton, isLoading && styles.disabledButton]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                >
+                  <LinearGradient
+                    colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.buttonGradient}
+                  >
+                    <Text style={styles.buttonText}>
+                      {isLoading ? "Giriş Yapılıyor..." : "Giriş Yap"}
+                    </Text>
+                    {!isLoading && (
+                      <MaterialIcons name="login" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Sign Up Link */}
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>Hesabın yok mu? </Text>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("Register")}
+                  >
+                    <Text style={styles.signUpText}>Hesap Oluştur</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </ScrollView>
@@ -173,33 +214,48 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
   },
-  backgroundWave: {
+  gradientBackground: {
     position: "absolute",
-    top: 0,
     left: 0,
     right: 0,
-    height: height * 0.35,
-    backgroundColor: COLORS.TERTIARY,
-    borderBottomLeftRadius: width * 0.5,
-    borderBottomRightRadius: width * 0.1,
+    top: 0,
+    height: height * 0.5,
   },
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    marginTop: 20,
     paddingHorizontal: 20,
-    paddingTop: 20,
-    zIndex: 1,
   },
   logoContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
   },
-  menuButton: {
-    padding: 8,
+  logoGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  appTitle: {
+    fontSize: 26,
+    fontWeight: "bold",
+    color: COLORS.TEXT_LIGHT,
+    marginBottom: 8,
+  },
+  appTagline: {
+    fontSize: 16,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginBottom: 16,
   },
   keyboardView: {
     flex: 1,
@@ -208,88 +264,119 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 24,
   },
-  form: {
+  formContainer: {
+    flex: 1,
+    justifyContent: "center",
+    paddingHorizontal: 20,
+    marginTop: 30,
+  },
+  formCard: {
+    backgroundColor: COLORS.WHITE,
+    borderRadius: 24,
     padding: 24,
-    marginTop: height * 0.08,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 10,
   },
   title: {
-    fontSize: 30,
+    fontSize: 26,
     fontWeight: "bold",
     color: COLORS.TEXT_DARK,
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.TEXT_GRAY,
     marginBottom: 32,
+    textAlign: "center",
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-    marginBottom: 24,
-    position: "relative",
+    borderWidth: 1,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+    borderRadius: 12,
+    backgroundColor: COLORS.WHITE,
+    marginBottom: 20,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   iconContainer: {
-    paddingRight: 10,
+    paddingHorizontal: 15,
   },
   input: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 15,
     fontSize: 16,
     color: COLORS.TEXT_DARK,
   },
   eyeIcon: {
-    padding: 8,
+    paddingHorizontal: 15,
   },
-  optionsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  rememberMeContainer: {
+  errorContainer: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderWidth: 1,
-    borderColor: COLORS.PRIMARY,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 8,
-  },
-  checked: {
-    width: 10,
-    height: 10,
-    backgroundColor: COLORS.PRIMARY,
-  },
-  rememberMeText: {
-    color: COLORS.TEXT_GRAY,
-    fontSize: 14,
+    backgroundColor: COLORS.NEGATIVE_LIGHT,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
   },
   errorText: {
     color: COLORS.NEGATIVE,
     fontSize: 14,
-    textAlign: "center",
-    marginBottom: 16,
+    marginLeft: 8,
+    flex: 1,
+  },
+  forgotPasswordButton: {
+    alignSelf: "flex-end",
+    marginBottom: 30,
   },
   forgotPasswordText: {
-    color: COLORS.TEXT_GRAY,
+    color: COLORS.PRIMARY,
     fontSize: 14,
+    fontWeight: "600",
   },
   loginButton: {
-    backgroundColor: COLORS.PRIMARY,
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
     marginBottom: 24,
+    borderRadius: 12,
+    overflow: "hidden",
+    elevation: 3,
+    shadowColor: COLORS.PRIMARY,
+    shadowOffset: {
+      width: 0, 
+      height: 4
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  buttonGradient: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 16,
   },
   disabledButton: {
-    opacity: 0.6,
+    opacity: 0.7,
   },
   buttonText: {
-    color: COLORS.TEXT_DARK,
+    color: COLORS.TEXT_LIGHT,
     fontSize: 16,
     fontWeight: "bold",
+  },
+  buttonIcon: {
+    marginLeft: 8,
   },
   footer: {
     flexDirection: "row",
@@ -298,9 +385,11 @@ const styles = StyleSheet.create({
   },
   footerText: {
     color: COLORS.TEXT_GRAY,
+    fontSize: 14,
   },
   signUpText: {
     color: COLORS.PRIMARY,
     fontWeight: "bold",
+    fontSize: 14,
   },
 });
