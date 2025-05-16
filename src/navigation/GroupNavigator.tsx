@@ -35,12 +35,12 @@ export default function GroupNavigator() {
       <Stack.Screen
         name="GroupDetails"
         component={GroupDetailScreen}
-        options={{ title: 'Grup Detayı' }}
+        options={{ title: 'Grup Detayı', headerShown: false }}
       />
       <Stack.Screen
         name="CreateGroup"
         component={CreateGroupScreen}
-        options={{ title: 'Yeni Grup' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="AddMember"

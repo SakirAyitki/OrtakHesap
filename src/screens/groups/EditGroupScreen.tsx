@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -29,11 +29,35 @@ type EditGroupScreenRouteProp = RouteProp<GroupStackParamList, 'EditGroup'>;
 export default function EditGroupScreen() {
   const navigation = useNavigation<EditGroupScreenNavigationProp>();
   const route = useRoute<EditGroupScreenRouteProp>();
-  const { group } = route.params;
+  const { groupId } = route.params;
 
-  const [name, setName] = useState(group.name);
-  const [description, setDescription] = useState(group.description || '');
+  const [group, setGroup] = useState<Group | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Grup bilgilerini yükle
+  useEffect(() => {
+    const fetchGroupDetails = async () => {
+      try {
+        setIsInitialLoading(true);
+        const groupData = await firebaseService.getGroupById(groupId);
+        setGroup(groupData);
+        setName(groupData.name || '');
+        setDescription(groupData.description || '');
+        setError(null);
+      } catch (error) {
+        console.error('Error fetching group details:', error);
+        setError('Grup bilgileri yüklenirken bir hata oluştu');
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    fetchGroupDetails();
+  }, [groupId]);
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -41,9 +65,14 @@ export default function EditGroupScreen() {
       return;
     }
 
+    if (!group) {
+      Alert.alert('Hata', 'Grup bilgileri yüklenemedi');
+      return;
+    }
+
     try {
       setIsLoading(true);
-      await firebaseService.updateGroup(group.id, {
+      await firebaseService.updateGroup(groupId, {
         name: name.trim(),
         description: description.trim(),
       });
@@ -55,6 +84,28 @@ export default function EditGroupScreen() {
       setIsLoading(false);
     }
   };
+
+  if (isInitialLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (error || !group) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error || 'Grup bulunamadı'}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Geri Dön</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -111,6 +162,30 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.BACKGROUND,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    color: COLORS.NEGATIVE,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: 16,
+    fontWeight: '500',
   },
   content: {
     flex: 1,

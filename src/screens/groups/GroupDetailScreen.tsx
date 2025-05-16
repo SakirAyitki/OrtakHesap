@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -8,17 +8,21 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  RefreshControl,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/color';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GroupStackParamList } from '../../types/navigation.types';
 import { Group } from '../../types/group.types';
 import { firebaseService } from '../../services/firebaseService';
 import { Expense } from '../../types/expense.types';
 import { formatDate, formatCurrency } from '../../utils/formatters';
+import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialIcons } from '@expo/vector-icons';
 
 type GroupDetailScreenNavigationProp = NativeStackNavigationProp<
   GroupStackParamList,
@@ -41,11 +45,26 @@ export default function GroupDetailScreen() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isExpensesLoading, setIsExpensesLoading] = useState(true);
+  const [isRefreshingExpenses, setIsRefreshingExpenses] = useState(false);
+  const [errorExpenses, setErrorExpenses] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGroupDetails();
     fetchExpenses();
   }, [groupId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchGroupDetails();
+      fetchExpenses();
+    }, [groupId])
+  );
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerShown: false
+    });
+  }, [navigation]);
 
   const fetchGroupDetails = async () => {
     try {
@@ -63,12 +82,76 @@ export default function GroupDetailScreen() {
 
   const fetchExpenses = async () => {
     try {
+      setIsExpensesLoading(true);
+      setErrorExpenses(null);
       const fetchedExpenses = await firebaseService.getExpenses(groupId);
       setExpenses(fetchedExpenses);
+      calculateGroupBalance(fetchedExpenses);
     } catch (error) {
-      console.error('Error fetching expenses:', error);
+      console.error('Expenses loading error:', error);
+      setErrorExpenses('Harcamaları yüklenirken bir hata oluştu');
     } finally {
       setIsExpensesLoading(false);
+    }
+  };
+
+  const refreshExpenses = async () => {
+    try {
+      setIsRefreshingExpenses(true);
+      setErrorExpenses(null);
+      const fetchedExpenses = await firebaseService.getExpenses(groupId);
+      setExpenses(fetchedExpenses);
+      calculateGroupBalance(fetchedExpenses);
+    } catch (error) {
+      console.error('Refreshing expenses error:', error);
+      setErrorExpenses('Harcamaları yenilerken bir hata oluştu');
+    } finally {
+      setIsRefreshingExpenses(false);
+    }
+  };
+
+  const calculateGroupBalance = (groupExpenses: Expense[]) => {
+    if (!group || !groupExpenses.length) return;
+    
+    const memberBalances: { [userId: string]: number } = {};
+    
+    group.members.forEach(member => {
+      memberBalances[member.id] = 0;
+    });
+    
+    groupExpenses.forEach(expense => {
+      if (memberBalances[expense.paidBy] !== undefined) {
+        memberBalances[expense.paidBy] += expense.amount;
+      }
+      
+      const participantCount = expense.participants.length > 0 
+        ? expense.participants.length 
+        : group.members.length;
+      
+      const perPersonShare = expense.amount / participantCount;
+      
+      if (expense.participants.length > 0) {
+        expense.participants.forEach(participant => {
+          if (memberBalances[participant.userId] !== undefined) {
+            memberBalances[participant.userId] -= perPersonShare;
+          }
+        });
+      } else {
+        group.members.forEach(member => {
+          if (member.id !== expense.paidBy && memberBalances[member.id] !== undefined) {
+            memberBalances[member.id] -= perPersonShare;
+          }
+        });
+      }
+    });
+    
+    const calculatedBalance = Object.values(memberBalances).reduce((sum, balance) => sum + balance, 0);
+    
+    if (group && calculatedBalance !== group.balance) {
+      setGroup(prevGroup => {
+        if (!prevGroup) return null;
+        return { ...prevGroup, balance: calculatedBalance };
+      });
     }
   };
 
@@ -84,7 +167,7 @@ export default function GroupDetailScreen() {
 
   const handleEditPress = () => {
     if (group) {
-      navigation.navigate('EditGroup', { group });
+      navigation.navigate('EditGroup', { groupId });
     }
   };
 
@@ -104,89 +187,96 @@ export default function GroupDetailScreen() {
     navigation.navigate('GroupSettings', { groupId });
   };
 
-  const renderExpenseItem = ({ item }: { item: Expense }) => (
-    <TouchableOpacity
-      style={styles.expenseItem}
-      onPress={() => handleExpensePress(item.id)}
-    >
-      <View style={styles.expenseInfo}>
-        <Text style={styles.expenseTitle}>{item.title}</Text>
-        <Text style={styles.expenseDate}>
-          {formatDate(item.createdAt)}
-        </Text>
-      </View>
-      <View style={styles.expenseAmount}>
-        <Text style={styles.amountText}>
-          {formatCurrency(item.amount, item.currency)}
-        </Text>
-        <Text style={[
-          styles.statusText,
-          item.status === 'settled' ? styles.settledStatus : styles.pendingStatus
-        ]}>
-          {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const renderExpenseItem = ({ item }: { item: Expense }) => {
+    const dateStr = formatDate(item.createdAt).includes('/') 
+      ? formatDate(item.createdAt) 
+      : formatDate(item.createdAt).replace('-', ' ');
+    
+    const participantCount = item.participants.length > 0 
+      ? item.participants.length 
+      : group?.members.length || 0;
+    
+    return (
+      <TouchableOpacity
+        style={styles.expenseCard}
+        onPress={() => handleExpensePress(item.id)}
+        activeOpacity={0.8}
+      >
+        <LinearGradient
+          colors={['#007BFF', '#0056E0']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.cardGradient}
+        >
+          <View style={styles.cardHeader}>
+            <View style={styles.expenseInfo}>
+              <Text style={styles.expenseTitle}>{item.title || 'Me'}</Text>
+              <Text style={styles.expenseDate}>{dateStr}</Text>
+            </View>
+            <View style={styles.expenseAmount}>
+              <Text style={styles.amountText}>
+                {formatCurrency(item.amount, item.currency)}
+              </Text>
+              <View style={[
+                styles.statusBadge,
+                item.status === 'settled' ? styles.settledBadge : styles.pendingBadge
+              ]}>
+                <Text style={styles.statusText}>
+                  {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
+        
+        <View style={styles.cardFooter}>
+          <View style={styles.footerInfo}>
+            <Text style={styles.footerLabel}>Ödeyen</Text>
+            <Text style={styles.footerValue}>{item.paidByUser?.fullName || 'Bilinmiyor'}</Text>
+          </View>
+          <View style={styles.footerInfo}>
+            <Text style={styles.footerLabel}>Katılımcılar</Text>
+            <Text style={styles.footerValue}>{participantCount} kişi</Text>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const renderHeader = () => {
     if (!group) return null;
 
     return (
       <>
-        <View style={styles.header}>
-          <View style={styles.headerContent}>
-            <Text style={styles.groupName}>{group.name}</Text>
-            {group.description && (
-              <Text style={styles.description}>{group.description}</Text>
-            )}
-          </View>
-          <View style={styles.headerButtons}>
-            <TouchableOpacity 
-              style={styles.refreshButton}
-              onPress={handleRefresh}
-              disabled={isRefreshing}
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
             >
-              {isRefreshing ? (
-                <ActivityIndicator size="small" color={COLORS.PRIMARY} />
-              ) : (
-                <Ionicons name="refresh" size={24} color={COLORS.PRIMARY} />
-              )}
+              <Ionicons name="chevron-back" size={24} color={COLORS.TEXT_LIGHT} />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.editButton}
-              onPress={handleEditPress}
-            >
-              <Ionicons name="create-outline" size={24} color={COLORS.PRIMARY} />
-            </TouchableOpacity>
+            <Text style={styles.title}>{group.name}</Text>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={handleRefresh}
+                disabled={isRefreshing}
+              >
+                {isRefreshing ? (
+                  <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+                ) : (
+                  <Ionicons name="refresh" size={24} color={COLORS.TEXT_LIGHT} />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.headerAddButton}
+                onPress={handleEditPress}
+              >
+                <Ionicons name="create-outline" size={24} color={COLORS.TEXT_LIGHT} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.infoCard}>
-          <View style={styles.infoRow}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Para Birimi</Text>
-              <Text style={styles.infoValue}>
-                {getCurrencySymbol(group.currency)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Bölüşüm</Text>
-              <Text style={styles.infoValue}>
-                {getSplitMethodText(group.splitMethod)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Toplam Bakiye</Text>
-              <Text style={[
-                styles.infoValue,
-                { color: group.balance >= 0 ? COLORS.POSITIVE : COLORS.NEGATIVE }
-              ]}>
-                {getCurrencySymbol(group.currency)}{Math.abs(group.balance)}
-              </Text>
-            </View>
-          </View>
-        </View>
 
         <View style={styles.quickActions}>
           <TouchableOpacity 
@@ -207,11 +297,11 @@ export default function GroupDetailScreen() {
 
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Üyeler</Text>
+            <Text style={styles.headerSectionTitle}>Üyeler</Text>
             <Text style={styles.memberCount}>{group.members.length} üye</Text>
           </View>
           {group.members.length === 0 ? (
-            <Text style={styles.emptyText}>Henüz üye eklenmemiş</Text>
+            <Text style={styles.headerEmptyText}>Henüz üye eklenmemiş</Text>
           ) : (
             <View style={styles.memberList}>
               {group.members.map((member) => (
@@ -238,23 +328,66 @@ export default function GroupDetailScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Harcamalar</Text>
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeaderContainer}>
+            <View style={styles.sectionTitleContainer}>
+              <MaterialIcons name="receipt" size={24} color={COLORS.PRIMARY} />
+              <Text style={styles.expensesSectionTitle}>Harcamalar</Text>
+            </View>
             <TouchableOpacity
-              style={styles.addButton}
+              style={styles.expenseAddButton}
               onPress={handleCreateExpense}
             >
-              <Ionicons name="add" size={24} color={COLORS.PRIMARY} />
+              <Text style={styles.addButtonText}>+ Yeni Harcama</Text>
             </TouchableOpacity>
           </View>
+
           {isExpensesLoading ? (
-            <ActivityIndicator size="small" color={COLORS.PRIMARY} />
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+            </View>
+          ) : errorExpenses ? (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>
+                Harcamalar yüklenirken bir hata oluştu
+              </Text>
+              <TouchableOpacity
+                style={styles.retryButton}
+                onPress={fetchExpenses}
+              >
+                <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+              </TouchableOpacity>
+            </View>
           ) : expenses.length === 0 ? (
-            <Text style={styles.emptyText}>
-              Henüz harcama eklenmemiş
-            </Text>
-          ) : null}
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="receipt-long" size={48} color={COLORS.TEXT_GRAY} />
+              <Text style={styles.headerEmptyText}>Henüz harcama bulunmuyor</Text>
+              <TouchableOpacity
+                style={styles.emptyActionButton}
+                onPress={handleCreateExpense}
+              >
+                <Text style={styles.emptyActionButtonText}>Harcama Ekle</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <FlatList
+              data={expenses}
+              renderItem={renderExpenseItem}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.expensesList}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+              nestedScrollEnabled={false}
+              style={styles.expensesListContainer}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefreshingExpenses}
+                  onRefresh={refreshExpenses}
+                  colors={[COLORS.PRIMARY]}
+                />
+              }
+            />
+          )}
         </View>
       </>
     );
@@ -265,7 +398,7 @@ export default function GroupDetailScreen() {
       style={styles.settingsButton}
       onPress={handleSettingsPress}
     >
-      <Ionicons name="settings-outline" size={20} color={COLORS.TEXT_DARK} />
+      <Ionicons name="settings-outline" size={20} color={COLORS.PRIMARY} />
       <Text style={styles.settingsButtonText}>Grup Ayarları</Text>
     </TouchableOpacity>
   );
@@ -317,16 +450,19 @@ export default function GroupDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <FlatList
-        data={expenses}
-        renderItem={renderExpenseItem}
-        keyExtractor={item => item.id}
-        ListHeaderComponent={renderHeader}
-        ListFooterComponent={renderFooter}
-        onRefresh={handleRefresh}
-        refreshing={isRefreshing}
-        contentContainerStyle={styles.listContent}
-      />
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[COLORS.PRIMARY]}
+          />
+        }
+      >
+        {renderHeader()}
+        {renderFooter()}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -369,43 +505,63 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  headerContent: {
-    flex: 1,
-    marginRight: 16,
-  },
-  groupName: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: COLORS.TEXT_DARK,
-    marginBottom: 4,
-  },
-  description: {
-    fontSize: 14,
-    color: COLORS.TEXT_GRAY,
-  },
-  editButton: {
-    padding: 8,
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 8,
-  },
-  infoCard: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 12,
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 15,
+    backgroundColor: COLORS.PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
     shadowColor: COLORS.SHADOW,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 5,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    flex: 1,
+    textAlign: 'center',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  refreshButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerAddButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoCard: {
+    marginHorizontal: 10,
+    marginTop: 0,
+    marginBottom: 10,
+    padding: 16,
+    backgroundColor: COLORS.TERTIARY,
+    shadowOpacity: 2,
+    elevation: 0,
+    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 25,
   },
   infoRow: {
     flexDirection: 'row',
@@ -417,10 +573,11 @@ const styles = StyleSheet.create({
   infoLabel: {
     fontSize: 12,
     color: COLORS.TEXT_GRAY,
-    marginBottom: 4,
+    marginBottom: 6,
+    fontWeight: '500',
   },
   infoValue: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: COLORS.TEXT_DARK,
   },
@@ -428,26 +585,51 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    paddingVertical: 24,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    backgroundColor: COLORS.TERTIARY,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.03)',
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
   },
   actionButton: {
     alignItems: 'center',
-    backgroundColor: COLORS.TERTIARY,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     padding: 16,
     borderRadius: 12,
-    minWidth: 150,
+    minWidth: 130,
   },
   actionButtonText: {
     color: COLORS.PRIMARY,
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
     marginTop: 8,
   },
   section: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    padding: 20,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    backgroundColor: COLORS.TERTIARY,
+    borderRadius: 16,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.03)',
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -455,66 +637,106 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
+  headerSectionTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
     color: COLORS.TEXT_DARK,
   },
   memberCount: {
     fontSize: 14,
+    fontWeight: '500',
     color: COLORS.TEXT_GRAY,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   memberList: {
     minHeight: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  expenseItem: {
+  expenseCard: {
+    marginBottom: 16,
+    marginHorizontal: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 1, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    backgroundColor: 'white',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  cardGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
   },
   expenseInfo: {
     flex: 1,
-    marginRight: 12,
   },
   expenseTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
     marginBottom: 4,
   },
   expenseDate: {
-    fontSize: 14,
-    color: COLORS.TEXT_GRAY,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 0,
   },
   expenseAmount: {
     alignItems: 'flex-end',
   },
   amountText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.TEXT_DARK,
-    marginBottom: 4,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_LIGHT,
+    marginBottom: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
   },
-  settledStatus: {
-    color: COLORS.POSITIVE,
+  settledBadge: {
+    backgroundColor: 'rgba(52, 199, 89, 0.4)',
   },
-  pendingStatus: {
-    color: COLORS.NEGATIVE,
+  pendingBadge: {
+    backgroundColor: 'rgba(243, 115, 112, 0.7)',
   },
-  addButton: {
-    padding: 8,
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 8,
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: 'white',
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(0, 0, 0, 0.03)',
+  },
+  footerInfo: {
+    alignItems: 'center',
+  },
+  footerLabel: {
+    fontSize: 13,
+    color: COLORS.TEXT_GRAY,
+    marginBottom: 4,
+  },
+  footerValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: COLORS.TEXT_DARK,
   },
   settingsButton: {
     flexDirection: 'row',
@@ -522,35 +744,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 16,
     margin: 16,
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 8,
+    marginTop: 8,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0, 
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    borderWidth: 0,
   },
   settingsButtonText: {
     marginLeft: 8,
     fontSize: 16,
-    color: COLORS.TEXT_DARK,
-    fontWeight: '500',
+    color: COLORS.PRIMARY,
+    fontWeight: '600',
   },
   memberItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
+    borderBottomColor: 'rgba(198, 198, 200, 0.3)',
   },
   memberAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.TERTIARY,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    borderRadius: 22.5,
   },
   avatarText: {
     fontSize: 18,
@@ -562,7 +794,7 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
     color: COLORS.TEXT_DARK,
     marginBottom: 2,
   },
@@ -570,23 +802,115 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.TEXT_GRAY,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  refreshButton: {
-    padding: 8,
-    backgroundColor: COLORS.TERTIARY,
-    borderRadius: 8,
-    marginRight: 8,
-  },
-  emptyText: {
+  headerEmptyText: {
     fontSize: 16,
     color: COLORS.TEXT_GRAY,
     textAlign: 'center',
     marginVertical: 16,
+    fontStyle: 'italic',
   },
   listContent: {
+    padding: 0,
+    paddingBottom: 16,
+  },
+  groupTitleCard: {
     padding: 16,
+    backgroundColor: COLORS.TERTIARY,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  groupTitleText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.TEXT_DARK,
+  },
+  groupDescriptionText: {
+    fontSize: 14,
+    color: COLORS.TEXT_GRAY,
+    marginTop: 4,
+  },
+  backButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sectionContainer: {
+    marginTop: 24,
+    backgroundColor: COLORS.WHITE,
+    borderRadius: 16,
+    padding: 16,
+    marginHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  expensesSectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: COLORS.TEXT_DARK,
+    marginLeft: 8,
+  },
+  expenseAddButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  addButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  loaderContainer: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: COLORS.TEXT_GRAY,
+    marginTop: 12,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  emptyActionButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  emptyActionButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontWeight: '600',
+  },
+  expensesList: {
+    paddingBottom: 8,
+  },
+  expensesListContainer: {
+    flexGrow: 0,
+    marginTop: 16,
+  },
+  scrollView: {
+    flex: 1,
   },
 });

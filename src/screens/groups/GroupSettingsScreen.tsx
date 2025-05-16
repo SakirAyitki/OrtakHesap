@@ -62,7 +62,7 @@ export default function GroupSettingsScreen() {
 
   const handleEditGroup = () => {
     if (group) {
-      navigation.navigate('EditGroup', { group });
+      navigation.navigate('EditGroup', { groupId });
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { COLORS } from '../../utils/color';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GroupStackParamList } from '../../types/navigation.types';
 import { firebaseService } from '../../services/firebaseService';
@@ -40,11 +40,19 @@ export default function ExpenseDetailsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
 
   const fetchExpenseDetails = async () => {
     try {
+      setIsLoading(true);
       const expenseData = await firebaseService.getExpenseById(groupId, expenseId);
       setExpense(expenseData);
+      
+      const groupData = await firebaseService.getGroupById(groupId);
+      if (groupData?.members) {
+        setGroupMembers(groupData.members);
+      }
+      
       setError(null);
     } catch (error) {
       console.error('Error fetching expense details:', error);
@@ -59,6 +67,12 @@ export default function ExpenseDetailsScreen() {
     fetchExpenseDetails();
   }, [groupId, expenseId]);
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchExpenseDetails();
+    }, [groupId, expenseId])
+  );
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchExpenseDetails();
@@ -66,7 +80,7 @@ export default function ExpenseDetailsScreen() {
 
   const handleEdit = () => {
     if (expense) {
-      navigation.navigate('EditExpense', { groupId, expense });
+      navigation.navigate('EditExpense', { groupId, expenseId });
     }
   };
 
@@ -205,22 +219,99 @@ export default function ExpenseDetailsScreen() {
           )}
         </View>
 
-        {/* Participants */}
+        {/* Katılımcılar Bölümü */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Katılımcılar</Text>
-          {expense.participants.length === 0 ? (
-            <Text style={styles.emptyText}>Henüz katılımcı eklenmemiş</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Katılımcılar</Text>
+            <Text style={styles.participantCount}>
+              {expense.participants?.length > 0 
+                ? expense.participants.length 
+                : groupMembers.length} kişi
+            </Text>
+          </View>
+          
+          {expense.participants && expense.participants.length > 0 ? (
+            <View style={styles.participantsList}>
+              {expense.participants.map((participant, index) => {
+                // Katılımcı bilgisini bul
+                const participantUser = expense.paidByUser && expense.paidByUser.id === participant.userId 
+                  ? expense.paidByUser 
+                  : groupMembers.find(member => member.id === participant.userId);
+                
+                return (
+                  <View key={participant.userId || index} style={styles.participantItem}>
+                    <View style={styles.participantAvatar}>
+                      <Text style={styles.avatarText}>
+                        {participantUser?.fullName?.charAt(0).toUpperCase() || '?'}
+                      </Text>
+                    </View>
+                    <View style={styles.participantInfo}>
+                      <Text style={styles.participantName}>
+                        {participantUser?.fullName || 'Katılımcı ' + (index + 1)}
+                        {participant.userId === expense.paidBy && ' (Ödeyen)'}
+                      </Text>
+                      <Text style={styles.participantStatus}>
+                        {expense.splitMethod === 'equal' 
+                          ? 'Eşit Pay' 
+                          : expense.splitMethod === 'percentage' 
+                            ? '%' + (100 / expense.participants.length).toFixed(0) + ' Pay' 
+                            : 'Manuel Pay'}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.participantBadge,
+                      participant.paid ? styles.paidBadge : styles.pendingBadge
+                    ]}>
+                      <Text style={styles.badgeText}>
+                        {participant.paid ? 'Ödendi' : 'Bekliyor'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          ) : groupMembers.length > 0 ? (
+            <View style={styles.participantsList}>
+              {groupMembers.map((member, index) => {
+                const isPayer = expense.paidBy === member.id;
+                
+                return (
+                  <View key={member.id || index} style={styles.participantItem}>
+                    <View style={styles.participantAvatar}>
+                      <Text style={styles.avatarText}>
+                        {member?.fullName?.charAt(0).toUpperCase() || '?'}
+                      </Text>
+                    </View>
+                    <View style={styles.participantInfo}>
+                      <Text style={styles.participantName}>
+                        {member?.fullName || 'Üye ' + (index + 1)}
+                        {isPayer && ' (Ödeyen)'}
+                      </Text>
+                      <Text style={styles.participantStatus}>
+                        {expense.splitMethod === 'equal' 
+                          ? 'Eşit Pay' 
+                          : expense.splitMethod === 'percentage' 
+                            ? '%' + (100 / groupMembers.length).toFixed(0) + ' Pay' 
+                            : 'Manuel Pay'}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.participantBadge,
+                      isPayer ? styles.paidBadge : styles.pendingBadge
+                    ]}>
+                      <Text style={styles.badgeText}>
+                        {isPayer ? 'Ödendi' : 'Bekliyor'}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
           ) : (
-            expense.participants.map((participant, index) => (
-              <View key={participant.userId} style={styles.participantItem}>
-                <Text style={styles.participantName}>
-                  {participant.userId === user?.id ? 'Siz' : 'Kullanıcı'}
-                </Text>
-                <Text style={styles.participantShare}>
-                  {formatCurrency(participant.share, expense.currency)}
-                </Text>
-              </View>
-            ))
+            <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={48} color={COLORS.TEXT_GRAY} />
+              <Text style={styles.emptyText}>Bu harcama için katılımcı bulunamadı</Text>
+            </View>
           )}
         </View>
 
@@ -331,28 +422,12 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_DARK,
     marginBottom: 16,
   },
-  participantItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.BORDER,
-  },
-  participantName: {
-    fontSize: 16,
-    color: COLORS.TEXT_DARK,
-  },
-  participantShare: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: COLORS.TEXT_DARK,
-  },
   emptyText: {
     fontSize: 16,
     color: COLORS.TEXT_GRAY,
     textAlign: 'center',
     paddingVertical: 16,
+    fontStyle: 'italic',
   },
   deleteButton: {
     flexDirection: 'row',
@@ -385,5 +460,89 @@ const styles = StyleSheet.create({
     color: COLORS.TEXT_LIGHT,
     fontSize: 16,
     fontWeight: '500',
+  },
+  participantsList: {
+    marginTop: 12,
+  },
+  participantItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  participantAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.PRIMARY + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  participantInfo: {
+    flex: 1,
+  },
+  participantName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: COLORS.TEXT_DARK,
+    marginBottom: 4,
+  },
+  participantStatus: {
+    fontSize: 14,
+    color: COLORS.TEXT_GRAY,
+  },
+  participantBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  avatarText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: COLORS.PRIMARY,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.TEXT_LIGHT,
+    paddingHorizontal: 4,
+  },
+  paidBadge: {
+    backgroundColor: 'rgba(52, 199, 89, 0.8)',
+  },
+  pendingBadge: {
+    backgroundColor: 'rgba(255, 59, 48, 0.8)',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  participantCount: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: COLORS.TEXT_GRAY,
+    backgroundColor: 'rgba(142, 142, 147, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  infoMessageContainer: {
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  infoMessage: {
+    fontSize: 14,
+    color: COLORS.PRIMARY,
+    textAlign: 'center',
   },
 }); 

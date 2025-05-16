@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,23 @@ export default function CreateExpenseScreen() {
   const [amount, setAmount] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [groupMembers, setGroupMembers] = useState<any[]>([]);
+
+  // Grup üyelerini getir
+  useEffect(() => {
+    const fetchGroupMembers = async () => {
+      try {
+        const group = await firebaseService.getGroupById(groupId);
+        if (group?.members) {
+          setGroupMembers(group.members);
+        }
+      } catch (error) {
+        console.error('Error fetching group members:', error);
+      }
+    };
+
+    fetchGroupMembers();
+  }, [groupId]);
 
   // Currency Picker State
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -91,6 +108,13 @@ export default function CreateExpenseScreen() {
     setError(null);
 
     try {
+      // Grup üyelerinden katılımcı listesi oluştur
+      const participants = groupMembers.map(member => ({
+        userId: member.id,
+        share: 0, // Bu değer bölüşüm metoduna göre hesaplanacak
+        paid: member.id === user?.id, // Ödeyen kişi ödemiş olarak işaretlenir
+      }));
+
       const expenseData = {
         groupId,
         title: title.trim(),
@@ -101,7 +125,7 @@ export default function CreateExpenseScreen() {
         splitMethod,
         category,
         date: new Date(),
-        participants: [], // TODO: Implement participant selection
+        participants: participants,
         status: 'pending' as const,
       };
 

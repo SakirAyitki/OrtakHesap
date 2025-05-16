@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -31,21 +31,62 @@ type EditExpenseScreenRouteProp = RouteProp<
   'EditExpense'
 >;
 
+type CurrencyType = 'TRY' | 'USD' | 'EUR';
+type SplitMethodType = 'equal' | 'percentage' | 'amount';
+
 export default function EditExpenseScreen() {
   const navigation = useNavigation<EditExpenseScreenNavigationProp>();
   const route = useRoute<EditExpenseScreenRouteProp>();
-  const { groupId, expense: initialExpense } = route.params;
+  const { groupId, expenseId } = route.params;
 
-  const [title, setTitle] = useState(initialExpense.title);
-  const [description, setDescription] = useState(initialExpense.description || '');
-  const [amount, setAmount] = useState(initialExpense.amount.toString());
-  const [currency, setCurrency] = useState(initialExpense.currency);
-  const [category, setCategory] = useState(initialExpense.category);
-  const [splitMethod, setSplitMethod] = useState(initialExpense.splitMethod);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [expense, setExpense] = useState<Expense | null>(null);
+  
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [amount, setAmount] = useState('');
+  const [currency, setCurrency] = useState<CurrencyType>('TRY');
+  const [category, setCategory] = useState('');
+  const [splitMethod, setSplitMethod] = useState<SplitMethodType>('equal');
+  
+  // Harcama verilerini fetch et
+  const fetchExpenseDetails = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const expenseData = await firebaseService.getExpenseById(groupId, expenseId);
+      setExpense(expenseData);
+      
+      // Expense verilerini form state'ine doldur
+      if (expenseData) {
+        setTitle(expenseData.title || '');
+        setDescription(expenseData.description || '');
+        setAmount(expenseData.amount?.toString() || '');
+        setCurrency((expenseData.currency as CurrencyType) || 'TRY');
+        setCategory(expenseData.category || EXPENSE_CATEGORIES[0]);
+        setSplitMethod((expenseData.splitMethod as SplitMethodType) || 'equal');
+      }
+    } catch (error) {
+      console.error('Error fetching expense details:', error);
+      setError('Harcama detayları yüklenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    fetchExpenseDetails();
+  }, [groupId, expenseId]);
 
   const handleSave = async () => {
+    if (!expense) {
+      setError('Düzenlenecek harcama bulunamadı');
+      return;
+    }
+    
     if (!title.trim()) {
       setError('Başlık alanı zorunludur');
       return;
@@ -57,7 +98,7 @@ export default function EditExpenseScreen() {
       return;
     }
 
-    setIsLoading(true);
+    setIsSaving(true);
     setError(null);
 
     try {
@@ -68,18 +109,37 @@ export default function EditExpenseScreen() {
         currency,
         category,
         splitMethod,
-        updatedAt: new Date().toISOString(),
+        updatedAt: new Date(),
       };
 
-      await firebaseService.updateExpense(groupId, initialExpense.id, updatedExpense);
+      await firebaseService.updateExpense(groupId, expense.id, updatedExpense);
       navigation.goBack();
     } catch (error) {
       console.error('Error updating expense:', error);
       setError('Harcama güncellenirken bir hata oluştu');
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (error && !expense) {
+    return (
+      <View style={styles.centerContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchExpenseDetails}>
+          <Text style={styles.retryButtonText}>Tekrar Dene</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -180,11 +240,11 @@ export default function EditExpenseScreen() {
 
           {/* Save Button */}
           <TouchableOpacity
-            style={[styles.saveButton, isLoading && styles.disabledButton]}
+            style={[styles.saveButton, isSaving && styles.disabledButton]}
             onPress={handleSave}
-            disabled={isLoading}
+            disabled={isSaving}
           >
-            {isLoading ? (
+            {isSaving ? (
               <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
             ) : (
               <Text style={styles.saveButtonText}>Kaydet</Text>
@@ -204,6 +264,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 16,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   inputContainer: {
     marginBottom: 16,
@@ -255,7 +321,19 @@ const styles = StyleSheet.create({
   errorText: {
     color: COLORS.NEGATIVE,
     fontSize: 14,
-    marginTop: 8,
+    marginVertical: 12,
     textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  retryButtonText: {
+    color: COLORS.TEXT_LIGHT,
+    fontSize: 16,
+    fontWeight: '500',
   },
 }); 
