@@ -38,11 +38,6 @@ export type GroupStatus =
     | 'archived'  // Arşivlenmiş grup
     | 'closed';   // Kapatılmış grup
 
-// Üyelik durumu
-export type MembershipStatus = 
-    | 'active'    // Aktif üye
-    | 'pending'   // Davet bekliyor
-    | 'left';     // Gruptan ayrılmış
 
 // Grup ayarları
 export type GroupSettings = {

@@ -209,13 +209,13 @@ export default function CreateGroupScreen() {
 
   const renderHeader = () => (
     <View style={styles.header}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={styles.backButton}
         onPress={() => navigation.goBack()}
       >
         <Ionicons name="chevron-back" size={24} color={COLORS.TEXT_LIGHT} />
       </TouchableOpacity>
-      <Text style={styles.headerTitle}>Yeni Grup</Text>
+      <Text style={styles.title}>Yeni Grup</Text>
       <View style={styles.headerRight} />
     </View>
   );
@@ -540,25 +540,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
+    marginBottom: 15,
     backgroundColor: COLORS.PRIMARY,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: COLORS.SHADOW,
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  headerTitle: {
-    fontSize: 20,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
     color: COLORS.TEXT_LIGHT,
+    flex: 1,
+    textAlign: 'center',
   },
   headerRight: {
-    width: 40,
+    width: 44,
   },
   stepIndicator: {
     flexDirection: 'row',

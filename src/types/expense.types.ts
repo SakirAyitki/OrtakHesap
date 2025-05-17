@@ -17,7 +17,6 @@ export type Expense = {
     date: Date;
     createdAt: Date;
     updatedAt: Date;
-    status: ExpenseStatus;
     attachments?: string[]; // URLs
 };
 
@@ -35,13 +34,6 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 
-// Harcama durumu
-export type ExpenseStatus = 
-    | 'pending'   // Onay bekliyor
-    | 'approved'  // Onaylandı
-    | 'rejected'  // Reddedildi
-    | 'settled'   // Ödendi
-    | 'cancelled'; // İptal edildi
 
 // Harcamaya katılan kişilerin detayları
 export type ExpenseParticipant = {
@@ -62,7 +54,7 @@ export type UpdateExpenseData = Partial<CreateExpenseData>;
 
 // Harcama özeti (liste görünümü için)
 export type ExpenseSummary = Pick<Expense, 
-    'id' | 'title' | 'amount' | 'currency' | 'date' | 'status'
+    'id' | 'title' | 'amount' | 'currency' | 'date'
 > & {
     paidByUser: GroupMember;
     participantCount: number;

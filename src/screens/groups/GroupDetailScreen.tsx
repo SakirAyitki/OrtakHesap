@@ -217,14 +217,7 @@ export default function GroupDetailScreen() {
               <Text style={styles.amountText}>
                 {formatCurrency(item.amount, item.currency)}
               </Text>
-              <View style={[
-                styles.statusBadge,
-                item.status === 'settled' ? styles.settledBadge : styles.pendingBadge
-              ]}>
-                <Text style={styles.statusText}>
-                  {item.status === 'settled' ? 'Ödendi' : 'Bekliyor'}
-                </Text>
-              </View>
+
             </View>
           </View>
         </LinearGradient>
