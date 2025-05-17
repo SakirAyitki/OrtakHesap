@@ -91,7 +91,7 @@ export default function BalanceScreen() {
       let totalPayable = 0;
       const allExpenses: Expense[] = [];
       const balancesByUser: { [key: string]: UserBalance } = {};
-      
+
       // Borç/alacak ilişkilerini toplamak için kullanılacak harita
       const consolidatedDebts = new Map<string, Map<string, number>>();
 
@@ -474,24 +474,24 @@ export default function BalanceScreen() {
     
     // Diğer kullanıcılar için sadece özet göster - borç/alacak ilişkilerini birleştir
     return (
-      <View style={styles.userCard}>
-        <LinearGradient
-          colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.cardGradient}
-        >
-          <View style={styles.userInfo}>
-            <View style={styles.userAvatar}>
-              <Text style={styles.avatarText}>
-                {item.fullName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.userDetails}>
-              <Text style={styles.userName}>{item.fullName}</Text>
-              <Text style={styles.userEmail}>{item.email}</Text>
-            </View>
+    <View style={styles.userCard}>
+      <LinearGradient
+        colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.cardGradient}
+      >
+        <View style={styles.userInfo}>
+          <View style={styles.userAvatar}>
+            <Text style={styles.avatarText}>
+              {item.fullName.charAt(0).toUpperCase()}
+            </Text>
           </View>
+          <View style={styles.userDetails}>
+            <Text style={styles.userName}>{item.fullName}</Text>
+            <Text style={styles.userEmail}>{item.email}</Text>
+          </View>
+        </View>
           
           <View style={styles.balanceRelationship}>
             {/* Bu kullanıcı ile doğrudan borç/alacak ilişkimizi göster - birleştirilmiş */}
@@ -517,7 +517,7 @@ export default function BalanceScreen() {
                       <Text style={styles.relationshipLabel}>Size borcu:</Text>
                       <Text style={[styles.relationshipAmount, {color: COLORS.POSITIVE}]}>
                         {formatCurrency(netAmount, balanceSummary.currency)}
-                      </Text>
+          </Text>
                     </View>
                   );
                 } else {
@@ -527,7 +527,7 @@ export default function BalanceScreen() {
                       <Text style={styles.relationshipLabel}>Ona borcunuz:</Text>
                       <Text style={[styles.relationshipAmount, {color: COLORS.NEGATIVE}]}>
                         {formatCurrency(-netAmount, balanceSummary.currency)}
-                      </Text>
+          </Text>
                     </View>
                   );
                 }
@@ -535,10 +535,10 @@ export default function BalanceScreen() {
               
               return null;
             })()}
-          </View>
-        </LinearGradient>
-      </View>
-    );
+        </View>
+      </LinearGradient>
+    </View>
+  );
   };
 
   if (isLoading) {

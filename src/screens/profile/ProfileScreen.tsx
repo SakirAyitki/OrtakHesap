@@ -10,6 +10,7 @@ import {
   Alert,
   Switch,
   Dimensions,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +20,7 @@ import { firebaseService } from '../../services/firebaseService';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const CARD_MARGIN = 16;
+const CARD_MARGIN = 20;
 const CARD_WIDTH = width - (CARD_MARGIN * 2);
 
 export default function ProfileScreen() {
@@ -122,7 +123,7 @@ export default function ProfileScreen() {
         <Text style={styles.title}>Profil</Text>
       </View>
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* Profil Bilgileri */}
         <View style={styles.card}>
           <LinearGradient
@@ -132,33 +133,44 @@ export default function ProfileScreen() {
             style={styles.cardGradient}
           >
             <View style={styles.profileSection}>
-              <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>
-                  {user?.fullName?.charAt(0).toUpperCase() || '?'}
-                </Text>
+              <View style={styles.avatarOuterContainer}>
+                <LinearGradient
+                  colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.1)']}
+                  style={styles.avatarContainer}
+                >
+                  <Text style={styles.avatarText}>
+                    {user?.fullName?.charAt(0).toUpperCase() || '?'}
+                  </Text>
+                </LinearGradient>
               </View>
               
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Ad Soyad</Text>
-                <TextInput
-                  style={[styles.input, !isEditing && styles.disabledInput]}
-                  value={fullName}
-                  onChangeText={setFullName}
-                  editable={isEditing}
-                  placeholder="Ad Soyad"
-                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                />
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="person-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, !isEditing && styles.disabledInput]}
+                    value={fullName}
+                    onChangeText={setFullName}
+                    editable={isEditing}
+                    placeholder="Ad Soyad"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  />
+                </View>
               </View>
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>E-posta</Text>
-                <TextInput
-                  style={[styles.input, styles.disabledInput]}
-                  value={email}
-                  editable={false}
-                  placeholder="E-posta"
-                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
-                />
+                <View style={styles.inputWrapper}>
+                  <Ionicons name="mail-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                  <TextInput
+                    style={[styles.input, styles.disabledInput]}
+                    value={email}
+                    editable={false}
+                    placeholder="E-posta"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                  />
+                </View>
               </View>
 
               {!isEditing ? (
@@ -166,6 +178,7 @@ export default function ProfileScreen() {
                   style={styles.editButton}
                   onPress={() => setIsEditing(true)}
                 >
+                  <Ionicons name="create-outline" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
                   <Text style={styles.editButtonText}>Profili Düzenle</Text>
                 </TouchableOpacity>
               ) : (
@@ -177,6 +190,7 @@ export default function ProfileScreen() {
                       setFullName(user?.fullName || '');
                     }}
                   >
+                    <Ionicons name="close-outline" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
                     <Text style={styles.cancelButtonText}>İptal</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -187,7 +201,10 @@ export default function ProfileScreen() {
                     {isLoading ? (
                       <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
                     ) : (
-                      <Text style={styles.saveButtonText}>Kaydet</Text>
+                      <>
+                        <Ionicons name="checkmark-outline" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
+                        <Text style={styles.saveButtonText}>Kaydet</Text>
+                      </>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -204,107 +221,73 @@ export default function ProfileScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.cardGradient}
           >
-            <Text style={styles.cardTitle}>Şifre Değiştirme</Text>
+            <View style={styles.cardHeader}>
+              <Ionicons name="lock-closed-outline" size={24} color={COLORS.TEXT_LIGHT} />
+              <Text style={styles.cardTitle}>Şifre Değiştirme</Text>
+            </View>
             
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Mevcut Şifre</Text>
-              <TextInput
-                style={styles.input}
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-                secureTextEntry
-                placeholder="Mevcut şifrenizi girin"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="key-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  secureTextEntry
+                  placeholder="Mevcut şifrenizi girin"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Yeni Şifre</Text>
-              <TextInput
-                style={styles.input}
-                value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
-                placeholder="Yeni şifrenizi girin"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  secureTextEntry
+                  placeholder="Yeni şifrenizi girin"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Yeni Şifre (Tekrar)</Text>
-              <TextInput
-                style={styles.input}
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-                secureTextEntry
-                placeholder="Yeni şifrenizi tekrar girin"
-                placeholderTextColor="rgba(255, 255, 255, 0.5)"
-              />
+              <View style={styles.inputWrapper}>
+                <Ionicons name="lock-closed-outline" size={20} color="rgba(255,255,255,0.8)" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  secureTextEntry
+                  placeholder="Yeni şifrenizi tekrar girin"
+                  placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                />
+              </View>
             </View>
 
             <TouchableOpacity
-              style={[styles.changePasswordButton, (!currentPassword || !newPassword || !confirmPassword) && styles.disabledButton]}
+              style={[
+                styles.changePasswordButton,
+                (!currentPassword || !newPassword || !confirmPassword) && styles.disabledButton
+              ]}
               onPress={handleChangePassword}
               disabled={!currentPassword || !newPassword || !confirmPassword || isLoading}
             >
               {isLoading ? (
                 <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
               ) : (
-                <Text style={styles.buttonText}>Şifreyi Değiştir</Text>
+                <>
+                  <Ionicons name="key" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
+                  <Text style={styles.buttonText}>Şifreyi Değiştir</Text>
+                </>
               )}
             </TouchableOpacity>
-          </LinearGradient>
-        </View>
-
-        {/* Bildirim Ayarları */}
-        <View style={styles.card}>
-          <LinearGradient
-            colors={[COLORS.PRIMARY, COLORS.SECONDARY]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.cardGradient}
-          >
-            <Text style={styles.cardTitle}>Bildirim Tercihleri</Text>
-            
-            <View style={styles.settingItem}>
-              <Text style={styles.settingText}>E-posta Bildirimleri</Text>
-              <Switch
-                value={notificationSettings.emailNotifications}
-                onValueChange={() => handleToggleNotification('emailNotifications')}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
-                thumbColor={notificationSettings.emailNotifications ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <Text style={styles.settingText}>Push Bildirimleri</Text>
-              <Switch
-                value={notificationSettings.pushNotifications}
-                onValueChange={() => handleToggleNotification('pushNotifications')}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
-                thumbColor={notificationSettings.pushNotifications ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <Text style={styles.settingText}>Bakiye Uyarıları</Text>
-              <Switch
-                value={notificationSettings.balanceAlerts}
-                onValueChange={() => handleToggleNotification('balanceAlerts')}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
-                thumbColor={notificationSettings.balanceAlerts ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
-              />
-            </View>
-
-            <View style={styles.settingItem}>
-              <Text style={styles.settingText}>Grup Davetleri</Text>
-              <Switch
-                value={notificationSettings.groupInvites}
-                onValueChange={() => handleToggleNotification('groupInvites')}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: 'rgba(255, 255, 255, 0.3)' }}
-                thumbColor={notificationSettings.groupInvites ? COLORS.POSITIVE : COLORS.TEXT_LIGHT}
-              />
-            </View>
           </LinearGradient>
         </View>
 
@@ -313,6 +296,7 @@ export default function ProfileScreen() {
           style={styles.logoutButton}
           onPress={handleLogout}
         >
+          <Ionicons name="log-out-outline" size={20} color={COLORS.TEXT_LIGHT} style={styles.buttonIcon} />
           <Text style={styles.logoutText}>Çıkış Yap</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -354,71 +338,96 @@ const styles = StyleSheet.create({
   },
   card: {
     width: CARD_WIDTH,
-    marginBottom: 16,
-    borderRadius: 16,
+    marginBottom: 20,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: COLORS.SHADOW,
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 8,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    elevation: 4,
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
   },
   cardGradient: {
-    padding: 20,
+    padding: 24,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: COLORS.TEXT_LIGHT,
-    marginBottom: 16,
+    marginLeft: 12,
   },
   profileSection: {
     alignItems: 'center',
   },
+  avatarOuterContainer: {
+    padding: 3,
+    borderRadius: 44,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 24,
+  },
   avatarContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    width: 84,
+    height: 84,
+    borderRadius: 42,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
   },
   avatarText: {
-    fontSize: 32,
+    fontSize: 36,
     fontWeight: 'bold',
     color: COLORS.TEXT_LIGHT,
   },
   inputContainer: {
     width: '100%',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   label: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
     marginBottom: 8,
+    marginLeft: 4,
   },
-  input: {
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  inputIcon: {
+    paddingHorizontal: 12,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingRight: 12,
     fontSize: 16,
     color: COLORS.TEXT_LIGHT,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   disabledInput: {
     opacity: 0.7,
   },
   editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 8,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 12,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   editButtonText: {
     color: COLORS.TEXT_LIGHT,
@@ -429,13 +438,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
-    marginTop: 16,
+    marginTop: 20,
   },
   actionButton: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
   },
   cancelButton: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
@@ -456,11 +467,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   changePasswordButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.POSITIVE,
     padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
+    borderRadius: 12,
+    marginTop: 8,
   },
   disabledButton: {
     opacity: 0.5,
@@ -470,23 +483,15 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  settingItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  settingText: {
-    fontSize: 16,
-    color: COLORS.TEXT_LIGHT,
-  },
   logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginTop: 16,
     marginBottom: 42,
     padding: 16,
     backgroundColor: COLORS.NEGATIVE,
-    borderRadius: 8,
-    alignItems: 'center',
+    borderRadius: 12,
   },
   logoutText: {
     color: COLORS.TEXT_LIGHT,
