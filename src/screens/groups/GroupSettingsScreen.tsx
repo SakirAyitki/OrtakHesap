@@ -83,10 +83,33 @@ export default function GroupSettingsScreen() {
           onPress: async () => {
             try {
               setIsLoading(true);
-              // Grup üyelerinden kullanıcıyı çıkar
-              const updatedMembers = group.members.filter(member => member.id !== user.id);
-              await firebaseService.updateGroup(groupId, { members: updatedMembers });
-              navigation.navigate('GroupList');
+              
+              // Grup üyelerinden kullanıcıyı çıkar (sadece ID'leri gönder)
+              const updatedMemberIds = group.members
+                .filter(member => member.id !== user.id)
+                .map(member => member.id);
+              
+              console.log('Removing user from group. Updated member IDs:', updatedMemberIds);
+              
+              await firebaseService.updateGroup(groupId, { members: updatedMemberIds });
+              
+              // Başarı mesajı göster ve navigation yap
+              Alert.alert(
+                'Başarılı', 
+                'Gruptan başarıyla ayrıldınız.',
+                [
+                  { 
+                    text: 'Tamam', 
+                    onPress: () => {
+                      // GroupList'e geri dön ve refresh tetikle
+                      navigation.reset({
+                        index: 0,
+                        routes: [{ name: 'GroupList' }],
+                      });
+                    }
+                  }
+                ]
+              );
             } catch (error) {
               console.error('Error leaving group:', error);
               Alert.alert('Hata', 'Gruptan ayrılırken bir hata oluştu');

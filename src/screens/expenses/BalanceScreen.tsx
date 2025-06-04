@@ -141,25 +141,10 @@ export default function BalanceScreen() {
             // Borç ilişkisini ilgili haritalara ekle
             // Borçlu -> Alacaklı -> Miktar şeklinde kaydet
             const debtorMap = consolidatedDebts.get(member.id);
-            const creditorMap = consolidatedDebts.get(expense.paidBy);
             
             if (debtorMap) {
               const currentDebt = debtorMap.get(expense.paidBy) || 0;
               debtorMap.set(expense.paidBy, currentDebt + perPersonShare);
-            }
-            
-            if (creditorMap) {
-              const currentCredit = creditorMap.get(member.id) || 0;
-              creditorMap.set(member.id, currentCredit - perPersonShare);
-            }
-            
-            // Mevcut kullanıcı için toplam alacak/borç hesapla
-            if (member.id === user.id) {
-              totalPayable += perPersonShare;
-            }
-            
-            if (expense.paidBy === user.id) {
-              totalReceivable += perPersonShare;
             }
           });
         });
@@ -167,8 +152,9 @@ export default function BalanceScreen() {
         allExpenses.push(...expenses);
       }
       
-      // Birleştirilmiş borç/alacak ilişkilerini işle
+      // Net borç/alacak ilişkilerini hesapla ve çift sayımları önle
       const allDebtDetails: DebtDetail[] = [];
+      const processedPairs = new Set<string>();
       
       // Her kullanıcı için borç/alacak ilişkilerini oluştur
       consolidatedDebts.forEach((relationships, userId) => {
@@ -179,44 +165,86 @@ export default function BalanceScreen() {
           const otherUserBalance = balancesByUser[otherUserId];
           if (!otherUserBalance) return;
           
-          // Net borç tutarını hesapla (pozitif: borç, negatif: alacak)
-          if (amount !== 0) {
-            const debtDetail: DebtDetail = amount > 0 
-              ? {
-                  // Bu kullanıcı borçlu
-                  fromUserId: userId,
-                  fromUserName: userBalance.fullName,
-                  toUserId: otherUserId,
-                  toUserName: otherUserBalance.fullName,
-                  amount: amount
-                }
-              : {
-                  // Bu kullanıcı alacaklı
-                  fromUserId: otherUserId,
-                  fromUserName: otherUserBalance.fullName,
-                  toUserId: userId,
-                  toUserName: userBalance.fullName,
-                  amount: -amount
-                };
-                
-            allDebtDetails.push(debtDetail);
+          // Çift işlemi önlemek için sıralı pair anahtarı oluştur
+          const pairKey = [userId, otherUserId].sort().join('-');
+          if (processedPairs.has(pairKey)) return;
+          processedPairs.add(pairKey);
+          
+          // İki kullanıcı arasındaki karşılıklı borçları net hesapla
+          const otherRelationships = consolidatedDebts.get(otherUserId);
+          const reverseAmount = otherRelationships?.get(userId) || 0;
+          
+          // Net borç tutarını hesapla
+          const netAmount = amount - reverseAmount;
+          
+          if (Math.abs(netAmount) > 0.01) { // Küçük farklılıkları göz ardı et
+            let debtDetail: DebtDetail;
             
-            // Kullanıcının borç listesini güncelle
-            if (amount > 0) {
+            if (netAmount > 0) {
+              // İlk kullanıcı ikinci kullanıcıya borçlu
+              debtDetail = {
+                fromUserId: userId,
+                fromUserName: userBalance.fullName,
+                toUserId: otherUserId,
+                toUserName: otherUserBalance.fullName,
+                amount: netAmount
+              };
+              
+              // Kullanıcı borç listelerini güncelle
               userBalance.debts.push(debtDetail);
-              userBalance.balance -= amount;
-            } 
-            // Kullanıcının alacak listesini güncelle
-            else if (amount < 0) {
+              userBalance.balance -= netAmount;
+              
+              // Karşı tarafın alacak listesini güncelle
+              const creditDetail = {
+                fromUserId: userId,
+                fromUserName: userBalance.fullName,
+                toUserId: otherUserId,
+                toUserName: otherUserBalance.fullName,
+                amount: netAmount
+              };
+              otherUserBalance.credits.push(creditDetail);
+              otherUserBalance.balance += netAmount;
+            } else {
+              // İkinci kullanıcı ilk kullanıcıya borçlu
+              debtDetail = {
+                fromUserId: otherUserId,
+                fromUserName: otherUserBalance.fullName,
+                toUserId: userId,
+                toUserName: userBalance.fullName,
+                amount: -netAmount
+              };
+              
+              // Kullanıcı alacak listesini güncelle
               const creditDetail = {
                 fromUserId: otherUserId,
                 fromUserName: otherUserBalance.fullName,
                 toUserId: userId,
                 toUserName: userBalance.fullName,
-                amount: -amount
+                amount: -netAmount
               };
               userBalance.credits.push(creditDetail);
-              userBalance.balance -= amount; // Negatif değer olduğu için çıkarırken bakiyeyi artırıyoruz
+              userBalance.balance += (-netAmount);
+              
+              // Karşı tarafın borç listesini güncelle
+              otherUserBalance.debts.push(debtDetail);
+              otherUserBalance.balance -= (-netAmount);
+            }
+            
+            allDebtDetails.push(debtDetail);
+            
+            // Toplam alacak/borç hesapla (sadece mevcut kullanıcı için)
+            if (userId === user.id) {
+              if (netAmount > 0) {
+                totalPayable += netAmount;
+              } else {
+                totalReceivable += (-netAmount);
+              }
+            } else if (otherUserId === user.id) {
+              if (netAmount > 0) {
+                totalReceivable += netAmount;
+              } else {
+                totalPayable += (-netAmount);
+              }
             }
           }
         });
@@ -351,32 +379,6 @@ export default function BalanceScreen() {
   const renderUserBalanceItem = ({ item }: { item: UserBalance }) => {
     // Geçerli kullanıcı ise daha detaylı bir kart göster
     if (item.isCurrentUser) {
-      // Borç ve alacakları kullanıcı bazında birleştir
-      const consolidatedDebts = new Map<string, { userName: string, amount: number }>();
-      const consolidatedCredits = new Map<string, { userName: string, amount: number }>();
-      
-      // Borçları birleştir
-      item.debts.forEach(debt => {
-        const key = debt.toUserId;
-        const existing = consolidatedDebts.get(key);
-        if (existing) {
-          existing.amount += debt.amount;
-        } else {
-          consolidatedDebts.set(key, { userName: debt.toUserName, amount: debt.amount });
-        }
-      });
-      
-      // Alacakları birleştir
-      item.credits.forEach(credit => {
-        const key = credit.fromUserId;
-        const existing = consolidatedCredits.get(key);
-        if (existing) {
-          existing.amount += credit.amount;
-        } else {
-          consolidatedCredits.set(key, { userName: credit.fromUserName, amount: credit.amount });
-        }
-      });
-      
       return (
         <View style={[styles.userCard, styles.currentUserCard]}>
           <LinearGradient
@@ -414,13 +416,13 @@ export default function BalanceScreen() {
               </Text>
             </View>
 
-            {/* Borç detayları göster - birleştirilmiş */}
-            {consolidatedDebts.size > 0 && (
+            {/* Borç detayları göster */}
+            {item.debts.length > 0 && (
               <View style={styles.debtDetailsSection}>
                 <Text style={styles.debtsSectionTitle}>Borçlarınız</Text>
                 <View style={styles.debtDetailsList}>
-                  {Array.from(consolidatedDebts.entries()).map(([userId, details]) => (
-                    <View style={styles.debtDetailItem} key={`debt-${userId}`}>
+                  {item.debts.map((debt, index) => (
+                    <View style={styles.debtDetailItem} key={`debt-${debt.toUserId}-${index}`}>
                       <View style={styles.debtDetailDirection}>
                         <Text style={styles.debtUserName}>Borçlusunuz</Text>
                         <View style={styles.debtArrow}>
@@ -430,10 +432,10 @@ export default function BalanceScreen() {
                             color={COLORS.NEGATIVE} 
                           />
                         </View>
-                        <Text style={styles.debtUserName}>{details.userName}</Text>
+                        <Text style={styles.debtUserName}>{debt.toUserName}</Text>
                       </View>
                       <Text style={[styles.debtAmount, styles.negativeAmount]}>
-                        {formatCurrency(details.amount, balanceSummary.currency)}
+                        {formatCurrency(debt.amount, balanceSummary.currency)}
                       </Text>
                     </View>
                   ))}
@@ -441,13 +443,13 @@ export default function BalanceScreen() {
               </View>
             )}
 
-            {/* Alacak detayları göster - birleştirilmiş */}
-            {consolidatedCredits.size > 0 && (
+            {/* Alacak detayları göster */}
+            {item.credits.length > 0 && (
               <View style={styles.debtDetailsSection}>
                 <Text style={styles.creditsSectionTitle}>Alacaklarınız</Text>
                 <View style={styles.debtDetailsList}>
-                  {Array.from(consolidatedCredits.entries()).map(([userId, details]) => (
-                    <View style={styles.debtDetailItem} key={`credit-${userId}`}>
+                  {item.credits.map((credit, index) => (
+                    <View style={styles.debtDetailItem} key={`credit-${credit.fromUserId}-${index}`}>
                       <View style={styles.debtDetailDirection}>
                         <Text style={styles.debtUserName}>Alacaklısınız</Text>
                         <View style={styles.debtArrow}>
@@ -457,10 +459,10 @@ export default function BalanceScreen() {
                             color={COLORS.POSITIVE} 
                           />
                         </View>
-                        <Text style={styles.debtUserName}>{details.userName}</Text>
+                        <Text style={styles.debtUserName}>{credit.fromUserName}</Text>
                       </View>
                       <Text style={[styles.debtAmount, styles.positiveAmount]}>
-                        {formatCurrency(details.amount, balanceSummary.currency)}
+                        {formatCurrency(credit.amount, balanceSummary.currency)}
                       </Text>
                     </View>
                   ))}
@@ -472,7 +474,7 @@ export default function BalanceScreen() {
       );
     }
     
-    // Diğer kullanıcılar için sadece özet göster - borç/alacak ilişkilerini birleştir
+    // Diğer kullanıcılar için sadece özet göster
     return (
     <View style={styles.userCard}>
       <LinearGradient
@@ -494,22 +496,22 @@ export default function BalanceScreen() {
         </View>
           
           <View style={styles.balanceRelationship}>
-            {/* Bu kullanıcı ile doğrudan borç/alacak ilişkimizi göster - birleştirilmiş */}
+            {/* Bu kullanıcı ile doğrudan borç/alacak ilişkimizi göster */}
             {(() => {
-              // Bu kullanıcının size olan toplam borcu
-              const totalDebt = item.debts
+              // Bu kullanıcının size olan toplam borcu (onun debts listesinden)
+              const userOwesYou = item.debts
                 .filter(d => d.toUserId === user?.id)
                 .reduce((sum, debt) => sum + debt.amount, 0);
                 
-              // Sizin bu kullanıcıya olan toplam borcunuz
-              const totalCredit = item.credits
+              // Sizin bu kullanıcıya olan toplam borcunuz (sizin debts listesinden)
+              const youOweUser = item.credits
                 .filter(c => c.fromUserId === user?.id)
                 .reduce((sum, credit) => sum + credit.amount, 0);
                 
-              // Net ilişki hesapla ve görüntüle
-              const netAmount = totalDebt - totalCredit;
+              // Net ilişki hesapla
+              const netAmount = userOwesYou - youOweUser;
               
-              if (netAmount !== 0) {
+              if (Math.abs(netAmount) > 0.01) {
                 if (netAmount > 0) {
                   // Bu kullanıcı size borçlu
                   return (
@@ -517,7 +519,7 @@ export default function BalanceScreen() {
                       <Text style={styles.relationshipLabel}>Size borcu:</Text>
                       <Text style={[styles.relationshipAmount, {color: COLORS.POSITIVE}]}>
                         {formatCurrency(netAmount, balanceSummary.currency)}
-          </Text>
+                      </Text>
                     </View>
                   );
                 } else {
@@ -527,7 +529,7 @@ export default function BalanceScreen() {
                       <Text style={styles.relationshipLabel}>Ona borcunuz:</Text>
                       <Text style={[styles.relationshipAmount, {color: COLORS.NEGATIVE}]}>
                         {formatCurrency(-netAmount, balanceSummary.currency)}
-          </Text>
+                      </Text>
                     </View>
                   );
                 }

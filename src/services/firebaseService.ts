@@ -16,6 +16,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromServer,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -260,9 +261,19 @@ class FirebaseService {
         throw new Error('User not authenticated');
       }
 
+      console.log('Fetching groups for user:', currentUser.id);
+      
       const groupsRef = collection(db, 'groups');
       const q = query(groupsRef, where('members', 'array-contains', currentUser.id));
-      const groupsSnapshot = await getDocs(q);
+      
+      // Cache'i by-pass etmek için server'dan direkt veri çek
+      const groupsSnapshot = await getDocsFromServer(q);
+      
+      console.log('Found groups count:', groupsSnapshot.size);
+      console.log('Group documents:', groupsSnapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        members: doc.data().members 
+      })));
 
       const groups = await Promise.all(
         groupsSnapshot.docs.map(async (doc: QueryDocumentSnapshot<DocumentData>) => {
@@ -286,6 +297,12 @@ class FirebaseService {
           } as Group;
         })
       );
+
+      console.log('Final groups list:', groups.map(g => ({ 
+        id: g.id, 
+        name: g.name, 
+        members: g.members.map(m => m.id) 
+      })));
 
       return groups;
     } catch (error) {
@@ -386,7 +403,7 @@ class FirebaseService {
     }
   }
 
-  async updateGroup(groupId: string, updateData: Partial<Group>): Promise<void> {
+  async updateGroup(groupId: string, updateData: Partial<Omit<Group, 'members'>> & { members?: GroupMember[] | string[] }): Promise<void> {
     try {
       console.log('Updating group:', groupId, updateData);
       const groupRef = doc(db, 'groups', groupId);
@@ -396,27 +413,29 @@ class FirebaseService {
       if (!groupDoc.exists()) {
         throw new Error('Group not found');
       }
-      const currentData = groupDoc.data();
       
-      // Eğer members güncelleniyorsa, mevcut üyeleri koru ve yeni üyeleri ekle
+      // Eğer members güncelleniyorsa, direkt olarak yeni listeyi ayarla
       if (updateData.members) {
-        console.log('Current members:', currentData.members);
-        console.log('New members to add:', updateData.members);
+        console.log('Updating members to:', updateData.members);
         
-        // Mevcut ve yeni üyeleri birleştir, tekrar edenleri kaldır
-        const allMembers = Array.from(new Set([
-          ...currentData.members,
-          ...(Array.isArray(updateData.members) 
-            ? updateData.members.map(member => typeof member === 'string' ? member : member.id)
-            : [updateData.members]
-          )
-        ]));
+        // Members array'ını ID'lere dönüştür
+        let memberIds: string[] = [];
         
-        console.log('Final member list:', allMembers);
+        if (Array.isArray(updateData.members)) {
+          memberIds = updateData.members.map(member => {
+            if (typeof member === 'string') {
+              return member;
+            } else {
+              return member.id;
+            }
+          });
+        }
+        
+        console.log('Final member IDs:', memberIds);
         
         await updateDoc(groupRef, {
           ...updateData,
-          members: allMembers,
+          members: memberIds,
           updatedAt: serverTimestamp(),
         });
       } else {
@@ -439,14 +458,17 @@ class FirebaseService {
       console.log('Searching users with query:', searchQuery);
       const usersRef = collection(db, 'users');
       
-      // Email ile tam eşleşme ara
-      const q = query(usersRef, where('email', '==', searchQuery.toLowerCase()));
+      // Email ile tam eşleşme ara (case-insensitive)
+      const normalizedQuery = searchQuery.toLowerCase().trim();
+      const q = query(usersRef, where('email', '==', normalizedQuery));
       const querySnapshot = await getDocs(q);
 
       console.log('Search results count:', querySnapshot.size);
+      console.log('Normalized query:', normalizedQuery);
       
       return querySnapshot.docs.map(doc => {
         const data = doc.data();
+        console.log('Found user data:', { id: doc.id, email: data.email, fullName: data.fullName });
         return {
           id: doc.id,
           email: data.email || '',

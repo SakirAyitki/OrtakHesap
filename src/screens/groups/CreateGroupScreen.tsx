@@ -150,8 +150,38 @@ export default function CreateGroupScreen() {
     try {
       console.log('Creating new group with user:', user.id);
       
-      // Grup üye listesi oluştur (sadece ID'ler)
+      // Grup üye listesi oluştur (grup sahibi dahil)
       const memberIds = [user.id];
+      
+      // Eklenen e-postaları kontrol et ve sistemde kayıtlı olanları gruba ekle
+      const foundMembers: string[] = [];
+      const notFoundEmails: string[] = [];
+      
+      if (addedMembers.length > 0) {
+        console.log('Checking added members:', addedMembers.map(m => m.email));
+        
+        for (const member of addedMembers) {
+          try {
+            // E-posta ile kullanıcı arama yap
+            const users = await firebaseService.searchUsers(member.email.trim());
+            if (users.length > 0) {
+              const foundUser = users[0];
+              // Kullanıcı zaten listede var mı kontrol et
+              if (!memberIds.includes(foundUser.id)) {
+                memberIds.push(foundUser.id);
+                foundMembers.push(foundUser.email);
+                console.log('Found and added user:', foundUser.email);
+              }
+            } else {
+              notFoundEmails.push(member.email);
+              console.log('User not found:', member.email);
+            }
+          } catch (searchError) {
+            console.error('Error searching user:', member.email, searchError);
+            notFoundEmails.push(member.email);
+          }
+        }
+      }
       
       const newGroup = {
         name: name.trim(),
@@ -169,26 +199,24 @@ export default function CreateGroupScreen() {
       };
 
       console.log('New group data:', newGroup);
+      console.log('Final member IDs:', memberIds);
+      
       const groupId = await firebaseService.createGroup(newGroup);
       console.log('Group created successfully with ID:', groupId);
       
-      // Grup oluşturulduktan sonra, eklenen e-postalar için davetler gönder
-      if (addedMembers.length > 0) {
-        try {
-          // Burada normalde davet gönderme işlemi yapılır
-          // firebaseService.inviteToGroup(groupId, addedMembers.map(m => m.email));
-          console.log('Invites would be sent to:', addedMembers.map(m => m.email));
-        } catch (inviteError) {
-          console.error('Error sending invites:', inviteError);
-        }
+      // Başarı mesajı oluştur
+      let successMessage = 'Grup başarıyla oluşturuldu.';
+      if (foundMembers.length > 0) {
+        successMessage += `\n\n${foundMembers.length} üye gruba eklendi:\n${foundMembers.join(', ')}`;
+      }
+      if (notFoundEmails.length > 0) {
+        successMessage += `\n\n${notFoundEmails.length} e-posta sistemde bulunamadı:\n${notFoundEmails.join(', ')}\n\nBu kişileri daha sonra davet edebilirsiniz.`;
       }
       
       // Başarı mesajı göster
       Alert.alert(
         'Grup Oluşturuldu',
-        addedMembers.length > 0 
-          ? 'Grup başarıyla oluşturuldu. Üye davetleri e-posta ile gönderilecek.'
-          : 'Grup başarıyla oluşturuldu.',
+        successMessage,
         [
           { text: 'Tamam', onPress: () => navigation.navigate('GroupList') }
         ]
@@ -475,19 +503,21 @@ export default function CreateGroupScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[
-              styles.createButton,
-              isLoading && styles.disabledButton
-            ]}
+            style={[styles.actionButton, isLoading && styles.disabledButton]}
             onPress={handleCreate}
             disabled={isLoading}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} />
+              <>
+                <ActivityIndicator size="small" color={COLORS.TEXT_LIGHT} style={{ marginRight: 8 }} />
+                <Text style={styles.actionButtonText}>
+                  {addedMembers.length > 0 ? 'Üyeler kontrol ediliyor...' : 'Grup oluşturuluyor...'}
+                </Text>
+              </>
             ) : (
               <>
-                <Text style={styles.createButtonText}>Grup Oluştur</Text>
-                <Ionicons name="checkmark" size={22} color={COLORS.TEXT_LIGHT} />
+                <Text style={styles.actionButtonText}>Grubu Oluştur</Text>
+                <Ionicons name="checkmark-circle" size={22} color={COLORS.TEXT_LIGHT} />
               </>
             )}
           </TouchableOpacity>

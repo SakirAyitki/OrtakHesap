@@ -3,7 +3,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { AuthStackParamList } from "../types/auth.types";
 import LoginScreen from "../screens/auth/LoginScreen";
 import RegisterScreen from "../screens/auth/RegisterScreen";
-import ForgotPasswordScreen from "../screens/auth/ForgotPasswordScreen";
 import ResetPasswordScreen from "../screens/auth/ResetPasswordScreen";
 import VerifyEmailScreen from "../screens/auth/VerifyEmailScreen";
 import VerifyCodeScreen from "../screens/auth/VerifyCodeScreen";
@@ -27,11 +26,6 @@ export default function AuthNavigator() {
       <Stack.Screen 
         name="Register" 
         component={RegisterScreen}
-      />
-
-      <Stack.Screen 
-        name="ForgotPassword" 
-        component={ForgotPasswordScreen}
       />
 
       <Stack.Screen 
