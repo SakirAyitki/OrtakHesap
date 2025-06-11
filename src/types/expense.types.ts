@@ -38,7 +38,7 @@ export type ExpenseCategory = typeof EXPENSE_CATEGORIES[number];
 // Harcamaya katılan kişilerin detayları
 export type ExpenseParticipant = {
     userId: string;
-    share: number; // Tutar veya yüzde
+    share: number; // Tutar
     paid: boolean;
     paidAmount?: number;
     paidAt?: Date;

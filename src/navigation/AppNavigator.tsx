@@ -6,13 +6,11 @@ import { NavigatorScreenParams } from '@react-navigation/native';
 import { GroupStackParamList } from '../types/navigation.types';
 import { ExpensesStackParamList } from './ExpensesNavigator';
 
-// Navigators & Screens
 import GroupNavigator from './GroupNavigator';
 import ExpensesNavigator from './ExpensesNavigator';
 import BalanceScreen from '../screens/expenses/BalanceScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 
-// Types
 export type AppTabParamList = {
   Groups: NavigatorScreenParams<GroupStackParamList>;
   Expenses: NavigatorScreenParams<ExpensesStackParamList>;

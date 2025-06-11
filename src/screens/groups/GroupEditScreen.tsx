@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { COLORS } from '../../utils/color';
@@ -17,6 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GroupStackParamList } from '../../types/navigation.types';
 import { Group } from '../../types/group.types';
 import { dropdownStyles } from '../../utils/dropdownTheme';
+import { firebaseService } from '../../services/firebaseService';
 
 type GroupEditScreenNavigationProp = NativeStackNavigationProp<
   GroupStackParamList,
@@ -34,15 +37,17 @@ type SplitMethodType = 'equal' | 'percentage' | 'amount';
 export default function GroupEditScreen() {
   const navigation = useNavigation<GroupEditScreenNavigationProp>();
   const route = useRoute<GroupEditScreenRouteProp>();
-  const { group } = route.params;
+  const { groupId } = route.params;
 
-  const [name, setName] = useState(group.name);
-  const [description, setDescription] = useState(group.description || '');
+  const [isLoading, setIsLoading] = useState(true);
+  const [group, setGroup] = useState<Group | null>(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Currency Picker State
   const [currencyOpen, setCurrencyOpen] = useState(false);
-  const [currency, setCurrency] = useState<CurrencyType>(group.currency);
+  const [currency, setCurrency] = useState<CurrencyType>('TRY');
   const [currencyItems] = useState([
     { label: 'Türk Lirası (₺)', value: 'TRY' },
     { label: 'Amerikan Doları ($)', value: 'USD' },
@@ -51,12 +56,34 @@ export default function GroupEditScreen() {
 
   // Split Method Picker State
   const [splitMethodOpen, setSplitMethodOpen] = useState(false);
-  const [splitMethod, setSplitMethod] = useState<SplitMethodType>(group.splitMethod);
+  const [splitMethod, setSplitMethod] = useState<SplitMethodType>('equal');
   const [splitMethodItems] = useState([
     { label: 'Eşit Bölüşüm', value: 'equal' },
     { label: 'Yüzdesel Bölüşüm', value: 'percentage' },
     { label: 'Manuel Bölüşüm', value: 'amount' },
   ]);
+
+  useEffect(() => {
+    fetchGroupData();
+  }, [groupId]);
+
+  const fetchGroupData = async () => {
+    try {
+      setIsLoading(true);
+      const groupData = await firebaseService.getGroupById(groupId);
+      setGroup(groupData);
+      setName(groupData.name);
+      setDescription(groupData.description || '');
+      setCurrency(groupData.currency as CurrencyType);
+      setSplitMethod(groupData.splitMethod as SplitMethodType);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+      setError('Grup bilgileri yüklenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -65,12 +92,43 @@ export default function GroupEditScreen() {
     }
 
     try {
-      // TODO: Implement group update
+      setIsLoading(true);
+      await firebaseService.updateGroup(groupId, {
+        name: name.trim(),
+        description: description.trim(),
+        currency,
+        splitMethod,
+      });
       navigation.goBack();
     } catch (error) {
+      console.error('Error updating group:', error);
       setError('Grup güncellenirken bir hata oluştu');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (error || !group) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error || 'Grup bulunamadı'}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => navigation.goBack()}
+        >
+          <Text style={styles.retryButtonText}>Geri Dön</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -132,8 +190,13 @@ export default function GroupEditScreen() {
           <TouchableOpacity 
             style={styles.saveButton}
             onPress={handleSave}
+            disabled={isLoading}
           >
-            <Text style={styles.buttonText}>Değişiklikleri Kaydet</Text>
+            {isLoading ? (
+              <ActivityIndicator color={COLORS.TEXT_DARK} />
+            ) : (
+              <Text style={styles.buttonText}>Değişiklikleri Kaydet</Text>
+            )}
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -187,5 +250,29 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: COLORS.BACKGROUND,
+  },
+  retryButton: {
+    marginTop: 16,
+    backgroundColor: COLORS.PRIMARY,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: COLORS.TEXT_DARK,
+    fontWeight: '600',
   },
 }); 

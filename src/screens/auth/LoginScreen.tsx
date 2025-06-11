@@ -165,11 +165,6 @@ export default function LoginScreen() {
                   </View>
                 )}
 
-                {/* Forgot Password */}
-                <TouchableOpacity style={styles.forgotPasswordButton}>
-                  <Text style={styles.forgotPasswordText}>Şifremi Unuttum</Text>
-                </TouchableOpacity>
-
                 {/* Login Button */}
                 <TouchableOpacity
                   style={[styles.loginButton, isLoading && styles.disabledButton]}

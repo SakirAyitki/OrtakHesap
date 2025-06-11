@@ -59,7 +59,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const token = await user.getIdToken();
           await AsyncStorage.setItem("authToken", token);
 
-          // Firebase user'ı User tipine dönüştürme işlemini firebaseService'e taşıyalım
           const userData = await firebaseService.getCurrentUser(user);
 
           await AsyncStorage.setItem("userData", JSON.stringify(userData));
